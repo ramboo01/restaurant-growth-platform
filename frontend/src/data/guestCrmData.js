@@ -1,0 +1,122 @@
+export const guestCustomers = [
+  {
+    id: 'guest-001',
+    name: 'Ava Thompson',
+    phone: '(555) 210-1184',
+    email: 'ava.thompson@example.com',
+    totalOrders: 18,
+    totalSpend: 684.5,
+    loyaltyPoints: 420,
+    lastVisit: 'July 12, 2026',
+    notes: 'Prefers no onions and usually orders lunch on weekdays.',
+    recentOrders: ['RR-10431', 'RR-10424', 'RR-10388']
+  },
+  {
+    id: 'guest-002',
+    name: 'Noah Patel',
+    phone: '(555) 210-2259',
+    email: 'noah.patel@example.com',
+    totalOrders: 12,
+    totalSpend: 512.25,
+    loyaltyPoints: 305,
+    lastVisit: 'July 11, 2026',
+    notes: 'High-frequency delivery guest in the downtown zone.',
+    recentOrders: ['RR-10430', 'RR-10423', 'RR-10391']
+  },
+  {
+    id: 'guest-003',
+    name: 'Mia Johnson',
+    phone: '(555) 210-3381',
+    email: 'mia.johnson@example.com',
+    totalOrders: 9,
+    totalSpend: 241.4,
+    loyaltyPoints: 180,
+    lastVisit: 'July 10, 2026',
+    notes: 'Often picks up after 6 PM and likes desserts.',
+    recentOrders: ['RR-10422', 'RR-10372', 'RR-10355']
+  },
+  {
+    id: 'guest-004',
+    name: 'Ethan Miller',
+    phone: '(555) 210-4470',
+    email: 'ethan.miller@example.com',
+    totalOrders: 24,
+    totalSpend: 992.8,
+    loyaltyPoints: 610,
+    lastVisit: 'July 14, 2026',
+    notes: 'VIP guest, responds well to family bundle offers.',
+    recentOrders: ['RR-10425', 'RR-10411', 'RR-10399']
+  },
+  {
+    id: 'guest-005',
+    name: 'Sophia Brown',
+    phone: '(555) 210-5093',
+    email: 'sophia.brown@example.com',
+    totalOrders: 7,
+    totalSpend: 198.2,
+    loyaltyPoints: 145,
+    lastVisit: 'July 8, 2026',
+    notes: 'Uses pickup almost exclusively.',
+    recentOrders: ['RR-10424', 'RR-10366', 'RR-10320']
+  },
+  {
+    id: 'guest-006',
+    name: 'Liam Wilson',
+    phone: '(555) 210-6117',
+    email: 'liam.wilson@example.com',
+    totalOrders: 15,
+    totalSpend: 538.9,
+    loyaltyPoints: 355,
+    lastVisit: 'July 13, 2026',
+    notes: 'Enjoys limited-time menu items and new burger launches.',
+    recentOrders: ['RR-10427', 'RR-10402', 'RR-10388']
+  },
+  {
+    id: 'guest-007',
+    name: 'Olivia Garcia',
+    phone: '(555) 210-7221',
+    email: 'olivia.garcia@example.com',
+    totalOrders: 11,
+    totalSpend: 305.6,
+    loyaltyPoints: 210,
+    lastVisit: 'July 9, 2026',
+    notes: 'Best contacted by email for loyalty promos.',
+    recentOrders: ['RR-10426', 'RR-10394', 'RR-10361']
+  },
+  {
+    id: 'guest-008',
+    name: 'Lucas Martinez',
+    phone: '(555) 210-8308',
+    email: 'lucas.martinez@example.com',
+    totalOrders: 5,
+    totalSpend: 147.8,
+    loyaltyPoints: 90,
+    lastVisit: 'July 7, 2026',
+    notes: 'New guest, good candidate for win-back offers.',
+    recentOrders: ['RR-10429', 'RR-10357', 'RR-10302']
+  },
+  {
+    id: 'guest-009',
+    name: 'Emma Davis',
+    phone: '(555) 210-9445',
+    email: 'emma.davis@example.com',
+    totalOrders: 14,
+    totalSpend: 477.15,
+    loyaltyPoints: 280,
+    lastVisit: 'July 13, 2026',
+    notes: 'Likes dessert add-ons and combo meals.',
+    recentOrders: ['RR-10428', 'RR-10401', 'RR-10377']
+  },
+  {
+    id: 'guest-010',
+    name: 'James Carter',
+    phone: '(555) 210-1056',
+    email: 'james.carter@example.com',
+    totalOrders: 20,
+    totalSpend: 741.3,
+    loyaltyPoints: 465,
+    lastVisit: 'July 15, 2026',
+    notes: 'Strong repeat customer, prefers high-protein menu items.',
+    recentOrders: ['RR-10432', 'RR-10418', 'RR-10390']
+  }
+];

@@ -1,0 +1,36 @@
+:root {
+  color: #1f2933;
+  background: #f7f8fa;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f7f8fa;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.app-min-vh {
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  width: 260px;
+}
+
+.app-layout-main {
+  min-width: 0;
+}

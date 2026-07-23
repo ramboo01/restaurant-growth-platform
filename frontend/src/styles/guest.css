@@ -1,0 +1,273 @@
+.guest-shell {
+  background: #fbfaf8;
+}
+
+.guest-header {
+  background: #ffffff;
+  border-bottom: 1px solid #ece7df;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.guest-header nav {
+  min-height: 68px;
+}
+
+.guest-brand {
+  align-items: center;
+  color: #1f2933;
+  display: inline-flex;
+  font-weight: 800;
+  gap: 0.6rem;
+}
+
+.guest-brand:hover,
+.guest-nav-link:hover {
+  text-decoration: none;
+}
+
+.guest-brand-mark {
+  align-items: center;
+  background: #1f2933;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.guest-nav-links {
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.guest-nav-link {
+  border-radius: 999px;
+  color: #4b5563;
+  font-weight: 700;
+  padding: 0.45rem 0.85rem;
+}
+
+.guest-nav-link.active {
+  background: #1f2933;
+  color: #ffffff;
+}
+
+.guest-icon-action {
+  align-items: center;
+  border: 1px solid #ece7df;
+  border-radius: 999px;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.guest-restaurant-panel {
+  background: #fff8ef;
+  border-bottom: 1px solid #f0e2d0;
+}
+
+.guest-info-card,
+.guest-menu-card {
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.06);
+}
+
+.guest-fulfillment-row {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.guest-promo-banner {
+  align-items: center;
+  background: #1f2933;
+  border-radius: 1rem;
+  color: #ffffff;
+  display: flex;
+  gap: 0.8rem;
+  padding: 1rem;
+}
+
+.guest-promo-banner i {
+  font-size: 1.35rem;
+}
+
+.guest-category-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.guest-search {
+  min-width: min(100%, 360px);
+}
+
+.guest-menu-card {
+  border: 1px solid #f0e8dd !important;
+}
+
+.guest-menu-card.is-unavailable {
+  background: #f8f9fa;
+}
+
+.guest-item-visual {
+  align-items: center;
+  background: #fff1db;
+  border-radius: 0.9rem;
+  color: #9a5b00;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-weight: 800;
+  height: 58px;
+  justify-content: center;
+  width: 58px;
+}
+
+.guest-item-visual-lg {
+  height: 72px;
+  width: 72px;
+}
+
+.guest-item-modal {
+  display: block;
+}
+
+.guest-item-modal .modal-dialog {
+  max-width: 640px;
+  position: relative;
+  z-index: 1060;
+}
+
+.guest-item-modal .modal-content {
+  border: 0;
+  border-radius: 1rem;
+  max-height: min(92vh, 760px);
+}
+
+.guest-modifier-option {
+  align-items: center;
+  border: 1px solid #ece7df;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.8rem 0.9rem;
+}
+
+.guest-modifier-option:has(input:checked) {
+  background: #fff8ef;
+  border-color: #d9973f;
+}
+
+.guest-quantity-display {
+  min-width: 48px;
+  opacity: 1;
+}
+
+.guest-item-modal-footer {
+  background: #ffffff;
+}
+
+.guest-modal-backdrop {
+  border: 0;
+  height: 100vh;
+  left: 0;
+  padding: 0;
+  position: fixed;
+  top: 0;
+  width: 100vw;
+  z-index: 1050;
+}
+
+.guest-demo-controls {
+  opacity: 0.9;
+}
+
+.guest-cart-drawer {
+  max-width: min(100vw, 420px);
+  visibility: visible;
+  z-index: 1060;
+}
+
+.guest-cart-item,
+.guest-cart-summary {
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.06);
+}
+
+.guest-cart-item {
+  border: 1px solid #f0e8dd !important;
+}
+
+.guest-cart-summary {
+  background: #fff8ef;
+}
+
+.guest-cart-empty {
+  padding: 2rem 1rem;
+}
+
+.guest-cart-empty-icon {
+  align-items: center;
+  background: #fff1db;
+  border-radius: 999px;
+  color: #9a5b00;
+  display: inline-flex;
+  height: 64px;
+  justify-content: center;
+  width: 64px;
+}
+
+.guest-cart-backdrop {
+  border: 0;
+  inset: 0;
+  position: fixed;
+  z-index: 1055;
+}
+
+@media (max-width: 767.98px) {
+  .guest-header nav {
+    min-height: 60px;
+  }
+
+  .guest-category-scroll {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .guest-category-scroll .btn {
+    flex: 0 0 auto;
+  }
+
+  .guest-search {
+    min-width: 100%;
+  }
+
+  .guest-item-modal .modal-dialog {
+    align-items: stretch;
+    margin: 0;
+    max-width: none;
+    min-height: 100vh;
+  }
+
+  .guest-item-modal .modal-content {
+    border-radius: 0;
+    max-height: 100vh;
+  }
+
+  .guest-item-modal-footer .d-flex {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+
+  .guest-cart-drawer {
+    max-width: 100vw;
+    width: 100vw !important;
+  }
+}
