@@ -47,6 +47,11 @@ export async function updateOrder(orderId, payload) {
   return unwrapOrder(response.data);
 }
 
+export async function updateOrderStatus(orderId, status) {
+  const response = await api.patch(`/api/orders/${orderId}/status`, { status });
+  return unwrapOrder(response.data);
+}
+
 export async function deleteOrder(orderId) {
   const response = await api.delete(`/api/orders/${orderId}`);
   return unwrapOrder(response.data);

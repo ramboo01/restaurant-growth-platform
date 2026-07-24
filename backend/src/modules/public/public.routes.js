@@ -133,4 +133,72 @@ router.get('/orders/number/:orderNumber', async (req, res, next) => {
   }
 });
 
+const { getDatabasePool } = require('../../config/database');
+
+// Check loyalty points by phone & restaurantId
+router.get('/loyalty/check', async (req, res, next) => {
+  try {
+    const { phone, restaurantId } = req.query;
+    if (!phone || !restaurantId) {
+      return sendError(res, {
+        statusCode: 400,
+        message: 'Missing phone or restaurantId query parameters'
+      });
+    }
+
+    const [rows] = await getDatabasePool().execute(
+      `SELECT id, customer_name AS customerName, phone, points, tier, joined_at AS joinedAt
+       FROM loyalty_members
+       WHERE restaurant_id = ? AND phone = ?
+       LIMIT 1`,
+      [restaurantId, phone.trim()]
+    );
+
+    if (rows.length === 0) {
+      return sendSuccess(res, {
+        statusCode: 200,
+        message: 'No loyalty member profile found',
+        data: null
+      });
+    }
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: 'Loyalty member profile fetched successfully',
+      data: rows[0]
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Get active rewards catalog
+router.get('/loyalty/rewards', async (req, res, next) => {
+  try {
+    const { restaurantId } = req.query;
+    if (!restaurantId) {
+      return sendError(res, {
+        statusCode: 400,
+        message: 'Missing restaurantId query parameter'
+      });
+    }
+
+    const [rows] = await getDatabasePool().execute(
+      `SELECT id, name, description, points_required AS pointsRequired, status
+       FROM loyalty_rewards
+       WHERE restaurant_id = ? AND status = 'Active'
+       ORDER BY points_required ASC`,
+      [restaurantId]
+    );
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: 'Loyalty rewards fetched successfully',
+      data: { rewards: rows }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 module.exports = router;

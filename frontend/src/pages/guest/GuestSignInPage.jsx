@@ -1,34 +1,51 @@
 import { useContext, useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext.jsx';
 
-function LoginPage() {
+function GuestSignInPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { login } = useContext(AuthContext);
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  function handleChange(event) {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+    setError('');
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
+
+    if (!form.email.trim()) return setError('Email is required.');
+    if (!form.password) return setError('Password is required.');
+
     setSubmitting(true);
 
     try {
       const response = await login(form);
       const loggedUser = response?.data?.user;
       const userRole = loggedUser?.role;
-      let defaultDestination = '/owner';
-      if (userRole === 'Staff') defaultDestination = '/staff';
-      else if (userRole === 'Driver') defaultDestination = '/driver';
-      else if (userRole === 'Admin') defaultDestination = '/admin';
-      else if (userRole === 'Customer') defaultDestination = '/';
 
-      const destination = location.state?.from?.pathname || defaultDestination;
-      navigate(destination, { replace: true });
+      // Customer goes to storefront, internal roles go to their dashboards
+      if (userRole === 'Customer') {
+        navigate('/', { replace: true });
+      } else if (userRole === 'Owner' || userRole === 'Manager') {
+        navigate('/owner', { replace: true });
+      } else if (userRole === 'Staff') {
+        navigate('/staff', { replace: true });
+      } else if (userRole === 'Driver') {
+        navigate('/driver', { replace: true });
+      } else if (userRole === 'Admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed.');
+      const errorMsg = err.response?.data?.message || err.message || 'Sign in failed.';
+      setError(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -42,9 +59,8 @@ function LoginPage() {
             <div className="card-body p-4 p-lg-5">
               <div className="text-center mb-4">
                 <div className="guest-brand-mark mx-auto mb-3" aria-hidden="true" style={{ width: 48, height: 48, fontSize: '1.25rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>R</div>
-                <p className="badge text-bg-warning mb-2">Staff / Owner Portal</p>
-                <h1 className="h4 mb-1">Internal Login</h1>
-                <p className="text-secondary small mb-0">Access for restaurant owners, staff, drivers, and admins only.</p>
+                <h1 className="h4 mb-1">Welcome back</h1>
+                <p className="text-secondary small mb-0">Sign in to your account to continue.</p>
               </div>
 
               {error ? (
@@ -56,43 +72,55 @@ function LoginPage() {
 
               <form onSubmit={handleSubmit}>
                 <div className="mb-3">
-                  <label className="form-label" htmlFor="portalEmail">Email</label>
+                  <label className="form-label" htmlFor="guestSigninEmail">Email Address</label>
                   <input
                     autoComplete="email"
                     className="form-control"
-                    id="portalEmail"
-                    type="email"
+                    id="guestSigninEmail"
+                    name="email"
+                    onChange={handleChange}
+                    placeholder="you@example.com"
                     required
+                    type="email"
                     value={form.email}
-                    onChange={(event) => setForm({ ...form, email: event.target.value })}
                     disabled={submitting}
                   />
                 </div>
+
                 <div className="mb-4">
-                  <label className="form-label" htmlFor="portalPassword">Password</label>
+                  <label className="form-label" htmlFor="guestSigninPassword">Password</label>
                   <input
                     autoComplete="current-password"
                     className="form-control"
-                    id="portalPassword"
-                    type="password"
+                    id="guestSigninPassword"
+                    name="password"
+                    onChange={handleChange}
+                    placeholder="Enter your password"
                     required
+                    type="password"
                     value={form.password}
-                    onChange={(event) => setForm({ ...form, password: event.target.value })}
                     disabled={submitting}
                   />
                 </div>
 
                 <button className="btn btn-primary w-100 py-2 mb-3" disabled={submitting} type="submit">
-                  {submitting ? 'Signing in...' : 'Login to Portal'}
+                  {submitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                      Signing in...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
                 </button>
 
                 <p className="text-center text-secondary small mb-2">
-                  Need a staff account?{' '}
-                  <Link to="/register">Register (Internal)</Link>
+                  Don't have an account?{' '}
+                  <Link to="/signup">Create account</Link>
                 </p>
                 <p className="text-center mb-0">
-                  <Link className="text-secondary small" to="/signin">
-                    ← Back to Customer Sign In
+                  <Link className="text-secondary small" to="/login">
+                    Staff / Owner Portal →
                   </Link>
                 </p>
               </form>
@@ -104,4 +132,4 @@ function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default GuestSignInPage;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import { trackOrder } from '../../services/orderService.js';
 
 const statusTimeline = [
@@ -57,7 +58,7 @@ function GuestOrderTrackingPage() {
     loadOrder();
   }, [orderId]);
 
-  // Poll order status every 5 seconds
+  // Poll order status every 5 seconds (as a backup)
   useEffect(() => {
     if (!orderId) return;
 
@@ -66,7 +67,6 @@ function GuestOrderTrackingPage() {
         const data = await trackOrder(orderId);
         setOrder(prev => {
           if (!prev) return data;
-          // Only update if status changed to prevent unnecessary re-renders
           if (prev.orderStatus !== data.orderStatus) {
             return data;
           }
@@ -79,6 +79,38 @@ function GuestOrderTrackingPage() {
 
     return () => clearInterval(timer);
   }, [orderId]);
+
+  // WebSocket real-time updates
+  useEffect(() => {
+    if (!orderId || !order?.restaurantId) return undefined;
+
+    const socketUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('connect', () => {
+      console.log('[Tracking Socket] Connected to server:', socket.id);
+      socket.emit('joinRestaurantRoom', order.restaurantId);
+    });
+
+    socket.on('orderUpdated', (updatedOrder) => {
+      console.log('[Tracking Socket] Order updated event:', updatedOrder);
+      if (String(updatedOrder.orderNumber) === String(orderId) || String(updatedOrder.id) === String(order?.id)) {
+        setOrder(prev => {
+          if (!prev) return updatedOrder;
+          if (prev.orderStatus !== updatedOrder.orderStatus) {
+            return { ...prev, orderStatus: updatedOrder.orderStatus };
+          }
+          return prev;
+        });
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [orderId, order?.restaurantId, order?.id]);
 
   const currentStatusIndex = useMemo(() => {
     if (!order) return 0;

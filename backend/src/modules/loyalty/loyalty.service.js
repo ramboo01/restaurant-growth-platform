@@ -136,6 +136,50 @@ async function deleteReward(restaurantId, rewardId) {
   );
 }
 
+async function addLoyaltyPointsByPhone(restaurantId, phone, totalAmount) {
+  const pointsToAdd = Math.round(Number(totalAmount) * 10);
+  if (pointsToAdd <= 0) return null;
+
+  const pool = getDatabasePool();
+  const cleanPhone = phone.trim();
+
+  // Find member first
+  const [rows] = await pool.execute(
+    'SELECT id, customer_name, points FROM loyalty_members WHERE restaurant_id = ? AND phone = ? LIMIT 1',
+    [restaurantId, cleanPhone]
+  );
+
+  if (rows.length > 0) {
+    const member = rows[0];
+    const newPoints = Number(member.points) + pointsToAdd;
+    
+    // Determine tier
+    let newTier = 'Bronze';
+    if (newPoints >= 2000) newTier = 'Platinum';
+    else if (newPoints >= 1000) newTier = 'Gold';
+    else if (newPoints >= 500) newTier = 'Silver';
+
+    await pool.execute(
+      'UPDATE loyalty_members SET points = ?, tier = ? WHERE id = ?',
+      [newPoints, newTier, member.id]
+    );
+    console.log(`[Loyalty] Updated member ${member.customer_name} (+${pointsToAdd} pts, total: ${newPoints})`);
+  } else {
+    // Auto-enroll Guest member
+    let newTier = 'Bronze';
+    if (pointsToAdd >= 2000) newTier = 'Platinum';
+    else if (pointsToAdd >= 1000) newTier = 'Gold';
+    else if (pointsToAdd >= 500) newTier = 'Silver';
+
+    await pool.execute(
+      `INSERT INTO loyalty_members (restaurant_id, customer_name, phone, points, tier)
+       VALUES (?, ?, ?, ?, ?)`,
+      [restaurantId, 'Guest Member', cleanPhone, pointsToAdd, newTier]
+    );
+    console.log(`[Loyalty] Auto-enrolled new member with phone ${cleanPhone} (+${pointsToAdd} pts)`);
+  }
+}
+
 module.exports = {
   LOYALTY_TIERS,
   createLoyaltyMember,
@@ -148,5 +192,6 @@ module.exports = {
   getRewards,
   createReward,
   updateReward,
-  deleteReward
+  deleteReward,
+  addLoyaltyPointsByPhone
 };

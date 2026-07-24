@@ -33,9 +33,10 @@ const allowedOrigins = FRONTEND_URL
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+const isProduction = process.env.NODE_ENV === 'production';
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: isProduction ? 100 : 100000,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -75,7 +76,7 @@ app.use('/api/public', publicRoutes);
 app.use('/api/restaurants', authorize('Admin', 'Owner'), restaurantRoutes);
 app.use('/api/menu', authorize('Owner', 'Manager'), verifyRestaurantOwnership, menuRoutes);
 app.use('/api/categories', authorize('Owner', 'Manager'), categoryRoutes);
-app.use('/api/orders', authorize('Owner', 'Manager', 'Staff'), verifyRestaurantOwnership, orderRoutes);
+app.use('/api/orders', authorize('Owner', 'Manager', 'Staff', 'Driver'), verifyRestaurantOwnership, orderRoutes);
 app.use('/api/staff', authorize('Admin', 'Owner'), verifyRestaurantOwnership, staffRoutes);
 app.use('/api/drivers', authorize('Owner', 'Driver'), verifyRestaurantOwnership, driverRoutes);
 app.use('/api/inventory', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, inventoryRoutes);

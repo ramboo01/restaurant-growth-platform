@@ -19,6 +19,11 @@ export const reportsService = {
   getTopItems: async (period = 'week') => {
     const response = await api.get(`/api/reports/top-items?period=${period}`);
     return response.data?.data ?? response.data;
+  },
+
+  getRevenueRecovery: async (period = 'week') => {
+    const response = await api.get(`/api/reports/revenue-recovery?period=${period}`);
+    return response.data?.data ?? response.data;
   }
 };
 

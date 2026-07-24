@@ -13,6 +13,9 @@ import GuestCheckoutPage from '../pages/guest/GuestCheckoutPage.jsx';
 import GuestHomePage from '../pages/guest/GuestHomePage.jsx';
 import GuestOrderSuccessPage from '../pages/guest/GuestOrderSuccessPage.jsx';
 import GuestOrderTrackingPage from '../pages/guest/GuestOrderTrackingPage.jsx';
+import GuestSignInPage from '../pages/guest/GuestSignInPage.jsx';
+import GuestSignUpPage from '../pages/guest/GuestSignUpPage.jsx';
+import GuestOrdersPage from '../pages/guest/GuestOrdersPage.jsx';
 import GuestPlaceholderPage from '../pages/guest/GuestPlaceholderPage.jsx';
 import Owner86BoardPage from '../pages/owner/Owner86BoardPage.jsx';
 import OwnerHomePage from '../pages/owner/OwnerHomePage.jsx';
@@ -40,11 +43,14 @@ function AppRoutes() {
       <Routes>
         <Route element={<GuestLayout />}>
           <Route index element={<GuestHomePage />} />
+          <Route path="signin" element={<GuestSignInPage />} />
+          <Route path="signup" element={<GuestSignUpPage />} />
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
           <Route path="rewards" element={<GuestPlaceholderPage title="Rewards" />} />
           <Route path="catering" element={<GuestPlaceholderPage title="Catering" />} />
           <Route path="checkout" element={<GuestCheckoutPage />} />
+          <Route path="orders" element={<GuestOrdersPage />} />
           <Route path="orders/:orderId" element={<GuestOrderTrackingPage />} />
           <Route path="order-success" element={<GuestOrderSuccessPage />} />
         </Route>
@@ -76,24 +82,24 @@ function AppRoutes() {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
           </Route>
-        </Route>
 
-        <Route path="staff" element={<StaffLayout />}>
-          <Route index element={<StaffHomePage />} />
-          <Route path="orders" element={<StaffOrdersPage />} />
-          <Route path="kitchen" element={<KitchenDisplayPage />} />
-          <Route path="*" element={<StaffHomePage />} />
-        </Route>
+          <Route path="staff" element={<StaffLayout />}>
+            <Route index element={<StaffHomePage />} />
+            <Route path="orders" element={<StaffOrdersPage />} />
+            <Route path="kitchen" element={<KitchenDisplayPage />} />
+            <Route path="*" element={<StaffHomePage />} />
+          </Route>
 
-        <Route path="driver" element={<DriverLayout />}>
-          <Route index element={<DriverHomePage />} />
-          <Route path="orders" element={<DriverOrdersPage />} />
-          <Route path="*" element={<DriverHomePage />} />
-        </Route>
+          <Route path="driver" element={<DriverLayout />}>
+            <Route index element={<DriverHomePage />} />
+            <Route path="orders" element={<DriverOrdersPage />} />
+            <Route path="*" element={<DriverHomePage />} />
+          </Route>
 
-        <Route path="admin" element={<AdminLayout />}>
-          <Route index element={<AdminHomePage />} />
-          <Route path="*" element={<AdminHomePage />} />
+          <Route path="admin" element={<AdminLayout />}>
+            <Route index element={<AdminHomePage />} />
+            <Route path="*" element={<AdminHomePage />} />
+          </Route>
         </Route>
 
         <Route path="404" element={<NotFoundPage />} />

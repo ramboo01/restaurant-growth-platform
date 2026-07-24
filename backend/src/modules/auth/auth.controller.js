@@ -60,7 +60,9 @@ async function profile(request, response, next) {
         user: {
           id: user.id,
           name: user.name,
-          email: user.email
+          email: user.email,
+          role: user.role,
+          restaurantId: user.restaurantId
         }
       }
     });

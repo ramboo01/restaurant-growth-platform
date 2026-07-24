@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../../config/env');
 const { getDatabasePool } = require('../../config/database');
 
-const USER_ROLES = ['Admin', 'Owner', 'Manager', 'Staff', 'Driver'];
+const USER_ROLES = ['Admin', 'Owner', 'Manager', 'Staff', 'Driver', 'Customer'];
 
 function getJwtSecret() {
   if (!JWT_SECRET) {
@@ -21,23 +21,34 @@ async function registerUser({ name, email, password, role, restaurantId }) {
   const normalizedRole = normalizeRole(role);
 
   try {
-    if (restaurantId) {
+    let finalRestaurantId = restaurantId ? Number(restaurantId) : null;
+    if (finalRestaurantId) {
       const [restaurants] = await getDatabasePool().execute(
         'SELECT id FROM restaurants WHERE id = ? LIMIT 1',
-        [restaurantId]
+        [finalRestaurantId]
       );
       if (restaurants.length === 0) {
-        const notFoundError = new Error('Restaurant not found with the provided ID.');
-        notFoundError.code = 'RESTAURANT_NOT_FOUND';
-        notFoundError.statusCode = 400;
-        throw notFoundError;
+        finalRestaurantId = null;
+      }
+    }
+
+    if (!finalRestaurantId) {
+      const [existingRest] = await getDatabasePool().execute('SELECT id FROM restaurants LIMIT 1');
+      if (existingRest.length > 0) {
+        finalRestaurantId = existingRest[0].id;
+      } else {
+        const [newRest] = await getDatabasePool().execute(
+          'INSERT INTO restaurants (name, phone, email, address, cuisine, opening_time, closing_time) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          ['My Restaurant', '555-0100', 'owner@restaurant.com', '123 Main St', 'General', '08:00:00', '22:00:00']
+        );
+        finalRestaurantId = newRest.insertId;
       }
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await getDatabasePool().execute(
       'INSERT INTO users (name, email, password, role, restaurant_id) VALUES (?, ?, ?, ?, ?)',
-      [name.trim(), normalizedEmail, passwordHash, normalizedRole, restaurantId]
+      [name.trim(), normalizedEmail, passwordHash, normalizedRole, finalRestaurantId]
     );
 
     return {
@@ -45,7 +56,7 @@ async function registerUser({ name, email, password, role, restaurantId }) {
       name: name.trim(),
       email: normalizedEmail,
       role: normalizedRole,
-      restaurantId
+      restaurantId: finalRestaurantId
     };
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {

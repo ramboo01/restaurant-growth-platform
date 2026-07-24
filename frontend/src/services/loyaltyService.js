@@ -24,5 +24,19 @@ export const loyaltyService = {
   deleteReward: async (rewardId) => {
     const response = await api.delete(`/api/loyalty/rewards/${rewardId}`);
     return response.data.data;
+  },
+
+  checkGuestPoints: async (phone, restaurantId) => {
+    const response = await api.get('/api/public/loyalty/check', {
+      params: { phone, restaurantId }
+    });
+    return response.data?.data;
+  },
+
+  getPublicRewards: async (restaurantId) => {
+    const response = await api.get('/api/public/loyalty/rewards', {
+      params: { restaurantId }
+    });
+    return response.data?.data?.rewards || [];
   }
 };

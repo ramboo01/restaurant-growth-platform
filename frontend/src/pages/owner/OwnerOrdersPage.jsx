@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import LoadingState from '../../components/feedback/LoadingState.jsx';
 import EmptyState from '../../components/feedback/EmptyState.jsx';
-import { createOrder, deleteOrder, fetchOrders, updateOrder } from '../../services/orderService.js';
+import { createOrder, deleteOrder, fetchOrders, updateOrder, updateOrderStatus } from '../../services/orderService.js';
 import { useSocket } from '../../context/SocketContext.jsx';
 
 const statusFilters = ['All', 'Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
@@ -158,8 +158,8 @@ function OwnerOrdersPage() {
     );
 
     try {
-      await updateOrder(order.id, { orderStatus: nextStatus });
-      showToast('Order updated successfully.');
+      await updateOrderStatus(order.id, nextStatus);
+      showToast('Order status updated successfully.');
       await loadOrders();
     } catch (requestError) {
       setOrders(previousOrders);

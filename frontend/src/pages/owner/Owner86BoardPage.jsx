@@ -1,32 +1,34 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader.jsx';
 import EmptyState from '../../components/feedback/EmptyState.jsx';
 import AvailabilityItemCard from '../../components/menu/AvailabilityItemCard.jsx';
-import { menuCategories, menuItems } from '../../data/menuData.js';
+import { fetchMenuItems, updateMenuItem } from '../../services/menuService.js';
+import { storefrontService } from '../../services/storefrontService.js';
+import { AuthContext } from '../../context/AuthContext.jsx';
+import { useSocket } from '../../context/SocketContext.jsx';
 import '../../styles/menu.css';
 
-function cloneMenuItemsForAvailability() {
-  return menuItems.map((item) => ({
-    ...item,
-    is86d: Boolean(item.is86d),
-    isAvailable: !item.is86d && Boolean(item.isAvailable)
-  }));
-}
+// Remove mock imports: menuCategories, menuItems
 
 function getFailedChannels(item) {
+  if (!item.channels) return [];
   return Object.entries(item.channels)
     .filter(([, channel]) => channel.status === 'failed')
     .map(([channelName]) => channelName);
 }
 
 function Owner86BoardPage() {
-  const [items, setItems] = useState(cloneMenuItemsForAvailability);
+  const { user } = useContext(AuthContext);
+  const { socket } = useSocket();
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [availabilityFilter, setAvailabilityFilter] = useState('all');
   const [feedback, setFeedback] = useState('');
   const [syncStates, setSyncStates] = useState({});
+  const [loading, setLoading] = useState(true);
   const syncTimers = useRef({});
 
   useEffect(() => {
@@ -34,6 +36,36 @@ function Owner86BoardPage() {
       Object.values(syncTimers.current).forEach((timerId) => window.clearTimeout(timerId));
     };
   }, []);
+
+  const loadData = async () => {
+    if (!user?.restaurantId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const [fetchedItems, fetchedCategories] = await Promise.all([
+        fetchMenuItems(),
+        storefrontService.getCategories(user.restaurantId)
+      ]);
+      setItems(fetchedItems.map(item => ({
+        ...item,
+        is86d: item.isAvailable === 0 || item.isAvailable === false,
+        basePrice: Number(item.price) || 0,
+        categoryId: item.category, // Assuming category name or ID is returned here
+        channels: {} // Mock channels for now
+      })));
+      setCategories(fetchedCategories);
+    } catch (err) {
+      console.error('Error loading 86 board data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [user?.restaurantId]);
 
   const stats = useMemo(() => {
     const available = items.filter((item) => item.isAvailable && !item.is86d).length;
@@ -45,11 +77,11 @@ function Owner86BoardPage() {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.trim().toLowerCase());
+      const matchesSearch = item.name?.toLowerCase().includes(searchTerm.trim().toLowerCase());
       const matchesCategory = selectedCategory === 'all' || item.categoryId === selectedCategory;
       const matchesAvailability =
         availabilityFilter === 'all' ||
-        (availabilityFilter === 'available' && item.isAvailable && !item.is86d) ||
+        (availabilityFilter === 'available' && !item.is86d) ||
         (availabilityFilter === '86d' && item.is86d);
 
       return matchesSearch && matchesCategory && matchesAvailability;
@@ -68,33 +100,56 @@ function Owner86BoardPage() {
     setAvailabilityFilter('all');
   }
 
-  function toggleAvailability(item) {
+  async function toggleAvailability(item) {
     if (syncStates[item.id]?.status === 'syncing') {
       return;
     }
 
     const willRestore = item.is86d;
-    setItems((currentItems) =>
-      currentItems.map((currentItem) => {
-        if (currentItem.id !== item.id) {
-          return currentItem;
-        }
-
-        return {
-          ...currentItem,
-          is86d: !willRestore,
-          isAvailable: willRestore
-        };
-      })
-    );
-
-    setFeedback(willRestore ? `${item.name} restored and available.` : `${item.name} marked 86'd.`);
     setSyncStates((current) => ({ ...current, [item.id]: { status: 'syncing' } }));
 
-    syncTimers.current[item.id] = window.setTimeout(() => {
+    try {
+      const updatedItem = await updateMenuItem(item.id, {
+        restaurantId: user.restaurantId,
+        name: item.name,
+        description: item.description,
+        category: item.categoryId,
+        price: item.basePrice,
+        imageUrl: item.imageUrl,
+        isAvailable: willRestore ? 1 : 0
+      });
+
+      setItems((currentItems) =>
+        currentItems.map((currentItem) => {
+          if (currentItem.id !== item.id) {
+            return currentItem;
+          }
+
+          return {
+            ...currentItem,
+            is86d: !willRestore,
+            isAvailable: willRestore
+          };
+        })
+      );
+
+      setFeedback(willRestore ? `${item.name} restored and available.` : `${item.name} marked 86'd.`);
       setSyncStates((current) => ({ ...current, [item.id]: { status: 'synced' } }));
-      delete syncTimers.current[item.id];
-    }, 900);
+
+      // Clear the "synced" status after a moment
+      syncTimers.current[item.id] = window.setTimeout(() => {
+        setSyncStates((current) => {
+          const newState = { ...current };
+          delete newState[item.id];
+          return newState;
+        });
+        delete syncTimers.current[item.id];
+      }, 2500);
+
+    } catch (err) {
+      console.error('Failed to update availability', err);
+      setSyncStates((current) => ({ ...current, [item.id]: { status: 'failed' } }));
+    }
   }
 
   return (
@@ -134,7 +189,7 @@ function Owner86BoardPage() {
                 Availability Board
               </h2>
               <p className="text-secondary small mb-0">
-                Local state mirrors the shared Master Menu availability field for this frontend phase.
+                Live state mirrors the shared Master Menu availability. Changes here sync instantly via WebSockets.
               </p>
             </div>
             <div className="d-flex flex-column flex-lg-row gap-2 availability-filter-controls">
@@ -176,23 +231,26 @@ function Owner86BoardPage() {
             >
               All Items
             </button>
-            {menuCategories.map((category) => (
+            {categories.map((category) => (
               <button
-                className={`btn btn-sm ${selectedCategory === category.id ? 'btn-primary' : 'btn-outline-secondary'}`}
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
+                className={`btn btn-sm ${selectedCategory === category.name ? 'btn-primary' : 'btn-outline-secondary'}`}
+                key={category.id || category.name}
+                onClick={() => setSelectedCategory(category.name)}
                 type="button"
               >
-                <i className={`bi ${category.icon} me-1`} aria-hidden="true" />
                 {category.name}
               </button>
             ))}
           </div>
 
-          {filteredItems.length ? (
+          {loading ? (
+            <div className="text-center py-5">
+              <span className="spinner-border text-primary" role="status" aria-hidden="true" />
+            </div>
+          ) : filteredItems.length ? (
             <div className="row g-3">
               {filteredItems.map((item) => {
-                const category = menuCategories.find((entry) => entry.id === item.categoryId);
+                const category = categories.find((entry) => entry.name === item.categoryId) || { name: item.categoryId };
                 return (
                   <div className="col-12 col-md-6 col-xxl-4" key={item.id}>
                     <AvailabilityItemCard

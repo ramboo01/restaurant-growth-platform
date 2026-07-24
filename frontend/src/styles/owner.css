@@ -246,6 +246,17 @@
   }
 }
 
+.bg-gradient-vip {
+  background: linear-gradient(135deg, #f59f00 0%, #d63384 100%) !important;
+  color: #fff !important;
+}
+
+.bg-gradient-recovery {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+}
+
 
 
 

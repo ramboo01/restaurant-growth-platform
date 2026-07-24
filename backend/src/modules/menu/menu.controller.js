@@ -62,6 +62,15 @@ async function update(request, response, next) {
       return sendError(response, { statusCode: 404, message: 'Menu item not found.' });
     }
 
+    try {
+      const socketUtils = require('../../utils/socket');
+      const io = socketUtils.getIO();
+      // Emit to everyone in this restaurant's room (both staff and guests)
+      io.to(`restaurant_${menuItem.restaurantId}`).emit('menuItemUpdated', menuItem);
+    } catch (socketErr) {
+      console.error('[Socket] Failed to emit menuItemUpdated event:', socketErr.message);
+    }
+
     return sendSuccess(response, { statusCode: 200, message: 'Menu item updated successfully.', data: { menuItem } });
   } catch (error) {
     return next(error);

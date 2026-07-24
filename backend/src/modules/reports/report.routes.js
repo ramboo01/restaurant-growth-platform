@@ -10,6 +10,7 @@ router.get('/summary', reportController.summary);
 router.get('/revenue', reportController.revenue);
 router.get('/orders', reportController.orders);
 router.get('/top-items', reportController.topItems);
+router.get('/revenue-recovery', reportController.revenueRecovery);
 
 module.exports = router;
 

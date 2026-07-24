@@ -1,4 +1,4 @@
-const { getSalesReport, getMenuReport, getStaffReport, getReportsSummary, getRevenueTrend, getOrdersTrend, getTopItems } = require('./report.service');
+const { getSalesReport, getMenuReport, getStaffReport, getReportsSummary, getRevenueTrend, getOrdersTrend, getTopItems, getRevenueRecovery } = require('./report.service');
 const { sendSuccess } = require('../../utils/apiResponse');
 
 async function sales(request, response, next) {
@@ -64,6 +64,15 @@ async function topItems(request, response, next) {
   }
 }
 
+async function revenueRecovery(request, response, next) {
+  try {
+    const report = await getRevenueRecovery(request.user.restaurantId, request.query.period);
+    return sendSuccess(response, { statusCode: 200, message: 'Revenue recovery report fetched successfully.', data: report });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   sales,
   menu,
@@ -71,6 +80,7 @@ module.exports = {
   summary,
   revenue,
   orders,
-  topItems
+  topItems,
+  revenueRecovery
 };
 

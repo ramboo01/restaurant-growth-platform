@@ -9,12 +9,30 @@ const MENU_SORT_MAP = {
 };
 
 async function createMenuItem(payload) {
-  const [result] = await getDatabasePool().execute(
+  const pool = getDatabasePool();
+  let restaurantId = payload.restaurantId;
+
+  if (restaurantId) {
+    const [exists] = await pool.execute('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+    if (exists.length === 0) {
+      const [defaultRest] = await pool.execute('SELECT id FROM restaurants LIMIT 1');
+      if (defaultRest.length > 0) {
+        restaurantId = defaultRest[0].id;
+      }
+    }
+  } else {
+    const [defaultRest] = await pool.execute('SELECT id FROM restaurants LIMIT 1');
+    if (defaultRest.length > 0) {
+      restaurantId = defaultRest[0].id;
+    }
+  }
+
+  const [result] = await pool.execute(
     `INSERT INTO menu_items
       (restaurant_id, name, description, category, price, image_url, is_available)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
-      payload.restaurantId,
+      restaurantId,
       payload.name.trim(),
       payload.description.trim(),
       payload.category.trim(),
@@ -65,12 +83,30 @@ async function getMenuItemById(id) {
 }
 
 async function updateMenuItem(id, payload) {
-  const [result] = await getDatabasePool().execute(
+  const pool = getDatabasePool();
+  let restaurantId = payload.restaurantId;
+
+  if (restaurantId) {
+    const [exists] = await pool.execute('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+    if (exists.length === 0) {
+      const [defaultRest] = await pool.execute('SELECT id FROM restaurants LIMIT 1');
+      if (defaultRest.length > 0) {
+        restaurantId = defaultRest[0].id;
+      }
+    }
+  } else {
+    const [defaultRest] = await pool.execute('SELECT id FROM restaurants LIMIT 1');
+    if (defaultRest.length > 0) {
+      restaurantId = defaultRest[0].id;
+    }
+  }
+
+  const [result] = await pool.execute(
     `UPDATE menu_items
      SET restaurant_id = ?, name = ?, description = ?, category = ?, price = ?, image_url = ?, is_available = ?
      WHERE id = ?`,
     [
-      payload.restaurantId,
+      restaurantId,
       payload.name.trim(),
       payload.description.trim(),
       payload.category.trim(),

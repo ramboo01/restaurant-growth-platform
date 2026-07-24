@@ -6,6 +6,7 @@ import GuestItemDetailModal from '../../components/guest/GuestItemDetailModal.js
 import GuestMenuItemCard from '../../components/guest/GuestMenuItemCard.jsx';
 import { guestStorefront } from '../../data/guestStorefrontData.js';
 import { storefrontService } from '../../services/storefrontService.js';
+import { io } from 'socket.io-client';
 
 function formatCurrencyStringToNumber(value) {
   if (typeof value === 'number') return value;
@@ -122,6 +123,45 @@ function GuestHomePage() {
       setIsLoading(false);
     }
   }
+
+  // Real-time updates for guest storefront (e.g., 86 board sync)
+  useEffect(() => {
+    if (!selectedRestaurant) return;
+
+    const socketUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('connect', () => {
+      console.log('[Guest Socket] Connected to server:', socket.id);
+      socket.emit('joinRestaurantRoom', selectedRestaurant.id);
+    });
+
+    socket.on('menuItemUpdated', (updatedItem) => {
+      console.log('[Guest Socket] Menu item updated:', updatedItem);
+      setMenuItems((currentItems) =>
+        currentItems.map((item) => {
+          if (item.id === updatedItem.id) {
+            return {
+              ...item,
+              isAvailable: updatedItem.isAvailable !== 0,
+              is86d: updatedItem.isAvailable === 0,
+              name: updatedItem.name,
+              description: updatedItem.description || '',
+              basePrice: Number(updatedItem.price || 0)
+            };
+          }
+          return item;
+        })
+      );
+    });
+
+    return () => {
+      socket.emit('leaveRestaurantRoom', selectedRestaurant.id);
+      socket.disconnect();
+    };
+  }, [selectedRestaurant]);
 
   const filteredItems = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();

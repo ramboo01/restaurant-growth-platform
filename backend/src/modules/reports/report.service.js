@@ -4,10 +4,10 @@ async function getSalesReport(restaurantId) {
   const [[row]] = await getDatabasePool().execute(`
     SELECT
       COUNT(*) AS totalOrders,
-      SUM(CASE WHEN order_status = 'Completed' THEN 1 ELSE 0 END) AS completedOrders,
+      SUM(CASE WHEN order_status = 'Completed' OR order_status = 'Delivered' THEN 1 ELSE 0 END) AS completedOrders,
       SUM(CASE WHEN order_status = 'Cancelled' THEN 1 ELSE 0 END) AS cancelledOrders,
-      COALESCE(SUM(total_amount), 0) AS totalRevenue,
-      COALESCE(AVG(total_amount), 0) AS averageOrderValue
+      COALESCE(SUM(CASE WHEN order_status IN ('Completed', 'Delivered') THEN total_amount ELSE 0 END), 0) AS totalRevenue,
+      COALESCE(AVG(CASE WHEN order_status IN ('Completed', 'Delivered') THEN total_amount ELSE NULL END), 0) AS averageOrderValue
     FROM orders
     WHERE restaurant_id = ?
   `, [restaurantId]);
@@ -56,32 +56,256 @@ async function getStaffReport(restaurantId) {
 }
 
 async function getReportsSummary(restaurantId, period) {
-  const sales = await getSalesReport(restaurantId);
+  const pool = getDatabasePool();
+
+  const [[row]] = await pool.execute(`
+    SELECT
+      COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() THEN total_amount ELSE 0 END), 0) AS todaySales,
+      COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN total_amount ELSE 0 END), 0) AS weeklySales,
+      COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN total_amount ELSE 0 END), 0) AS monthlySales,
+      COUNT(*) AS totalOrders
+    FROM orders
+    WHERE restaurant_id = ? AND order_status IN ('Completed', 'Delivered')
+  `, [restaurantId]);
+
   return {
-    todaysSales: `$${sales.totalRevenue.toLocaleString()}`,
-    todaySales: `$${sales.totalRevenue.toLocaleString()}`,
-    weeklySales: `$${(sales.totalRevenue * 1.5).toLocaleString()}`,
-    monthlySales: `$${(sales.totalRevenue * 4.2).toLocaleString()}`,
-    totalOrders: sales.totalOrders
+    todaysSales: `$${Number(row.todaySales).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    todaySales: `$${Number(row.todaySales).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    weeklySales: `$${Number(row.weeklySales).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    monthlySales: `$${Number(row.monthlySales).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    totalOrders: Number(row.totalOrders) || 0
   };
 }
 
 async function getRevenueTrend(restaurantId, period) {
-  return [1200, 1900, 1500, 2200, 2800, 3100, 2400];
+  const pool = getDatabasePool();
+  
+  if (period === 'day') {
+    // Group by hour for today
+    const [rows] = await pool.execute(`
+      SELECT HOUR(created_at) AS hr, SUM(total_amount) AS total
+      FROM orders
+      WHERE restaurant_id = ? AND order_status IN ('Completed', 'Delivered') AND DATE(created_at) = CURDATE()
+      GROUP BY HOUR(created_at)
+    `, [restaurantId]);
+
+    const trend = Array(24).fill(0);
+    for (const r of rows) {
+      trend[r.hr] = Number(r.total) || 0;
+    }
+    return trend;
+  } else if (period === 'month') {
+    // Group by day of the last 30 days
+    const [rows] = await pool.execute(`
+      SELECT DATE(created_at) AS dt, SUM(total_amount) AS total
+      FROM orders
+      WHERE restaurant_id = ? AND order_status IN ('Completed', 'Delivered') AND created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+      GROUP BY DATE(created_at)
+    `, [restaurantId]);
+
+    const trend = [];
+    const dateMap = {};
+    for (const r of rows) {
+      // Format as YYYY-MM-DD
+      const dStr = new Date(r.dt).toISOString().split('T')[0];
+      dateMap[dStr] = Number(r.total) || 0;
+    }
+
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dStr = d.toISOString().split('T')[0];
+      trend.push(dateMap[dStr] || 0);
+    }
+    return trend;
+  } else {
+    // Group by day of the last 7 days (default 'week')
+    const [rows] = await pool.execute(`
+      SELECT DATE(created_at) AS dt, SUM(total_amount) AS total
+      FROM orders
+      WHERE restaurant_id = ? AND order_status IN ('Completed', 'Delivered') AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+      GROUP BY DATE(created_at)
+    `, [restaurantId]);
+
+    const trend = [];
+    const dateMap = {};
+    for (const r of rows) {
+      const dStr = new Date(r.dt).toISOString().split('T')[0];
+      dateMap[dStr] = Number(r.total) || 0;
+    }
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dStr = d.toISOString().split('T')[0];
+      trend.push(dateMap[dStr] || 0);
+    }
+    return trend;
+  }
 }
 
 async function getOrdersTrend(restaurantId, period) {
-  return [45, 62, 58, 80, 95, 110, 88];
+  const pool = getDatabasePool();
+  
+  if (period === 'day') {
+    // Group by hour for today
+    const [rows] = await pool.execute(`
+      SELECT HOUR(created_at) AS hr, COUNT(*) AS count
+      FROM orders
+      WHERE restaurant_id = ? AND order_status IN ('Completed', 'Delivered') AND DATE(created_at) = CURDATE()
+      GROUP BY HOUR(created_at)
+    `, [restaurantId]);
+
+    const trend = Array(24).fill(0);
+    for (const r of rows) {
+      trend[r.hr] = Number(r.count) || 0;
+    }
+    return trend;
+  } else if (period === 'month') {
+    // Group by day of the last 30 days
+    const [rows] = await pool.execute(`
+      SELECT DATE(created_at) AS dt, COUNT(*) AS count
+      FROM orders
+      WHERE restaurant_id = ? AND order_status IN ('Completed', 'Delivered') AND created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+      GROUP BY DATE(created_at)
+    `, [restaurantId]);
+
+    const trend = [];
+    const dateMap = {};
+    for (const r of rows) {
+      const dStr = new Date(r.dt).toISOString().split('T')[0];
+      dateMap[dStr] = Number(r.count) || 0;
+    }
+
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dStr = d.toISOString().split('T')[0];
+      trend.push(dateMap[dStr] || 0);
+    }
+    return trend;
+  } else {
+    // Group by day of the last 7 days (default 'week')
+    const [rows] = await pool.execute(`
+      SELECT DATE(created_at) AS dt, COUNT(*) AS count
+      FROM orders
+      WHERE restaurant_id = ? AND order_status IN ('Completed', 'Delivered') AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+      GROUP BY DATE(created_at)
+    `, [restaurantId]);
+
+    const trend = [];
+    const dateMap = {};
+    for (const r of rows) {
+      const dStr = new Date(r.dt).toISOString().split('T')[0];
+      dateMap[dStr] = Number(r.count) || 0;
+    }
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dStr = d.toISOString().split('T')[0];
+      trend.push(dateMap[dStr] || 0);
+    }
+    return trend;
+  }
 }
 
 async function getTopItems(restaurantId, period) {
-  return [
-    { name: 'Truffle Burger', orders: 142, value: '142 orders', revenue: '$2,130' },
-    { name: 'Margherita Pizza', orders: 118, value: '118 orders', revenue: '$1,652' },
-    { name: 'Caesar Salad', orders: 95, value: '95 orders', revenue: '$1,140' },
-    { name: 'Iced Coffee', orders: 84, value: '84 orders', revenue: '$420' },
-    { name: 'Pasta Carbonara', orders: 76, value: '76 orders', revenue: '$1,216' }
-  ];
+  const pool = getDatabasePool();
+  let interval = 'INTERVAL 7 DAY';
+  if (period === 'day') interval = 'INTERVAL 1 DAY';
+  if (period === 'month') interval = 'INTERVAL 30 DAY';
+
+  const [rows] = await pool.execute(`
+    SELECT items
+    FROM orders
+    WHERE restaurant_id = ? AND order_status IN ('Completed', 'Delivered') AND created_at >= DATE_SUB(NOW(), ${interval})
+  `, [restaurantId]);
+
+  const itemsMap = {};
+  for (const r of rows) {
+    let items = r.items;
+    if (typeof items === 'string') {
+      try {
+        items = JSON.parse(items);
+      } catch (e) {
+        items = [];
+      }
+    }
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        const name = item.itemName || 'Unknown Item';
+        const qty = Number(item.quantity) || 1;
+        const total = Number(item.total) || (qty * (Number(item.unitPrice) || 0));
+
+        if (!itemsMap[name]) {
+          itemsMap[name] = { name, orders: 0, revenue: 0 };
+        }
+        itemsMap[name].orders += qty;
+        itemsMap[name].revenue += total;
+      }
+    }
+  }
+
+  const list = Object.values(itemsMap);
+  list.sort((a, b) => b.orders - a.orders);
+
+  const top5 = list.slice(0, 5).map(item => ({
+    name: item.name,
+    orders: item.orders,
+    value: `${item.orders} orders`,
+    revenue: `$${item.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }));
+
+  // Fallback if no items sold yet
+  if (top5.length === 0) {
+    return [
+      { name: 'No items sold', orders: 0, value: '0 orders', revenue: '$0.00' }
+    ];
+  }
+
+  return top5;
+}
+
+async function getRevenueRecovery(restaurantId, period) {
+  const pool = getDatabasePool();
+  let interval = 'INTERVAL 7 DAY';
+  if (period === 'day') interval = 'INTERVAL 1 DAY';
+  if (period === 'month') interval = 'INTERVAL 30 DAY';
+
+  const [[row]] = await pool.execute(`
+    SELECT
+      COALESCE(SUM(total_amount), 0) AS totalRevenue,
+      COUNT(*) AS totalOrders
+    FROM orders
+    WHERE restaurant_id = ? AND order_status IN ('Completed', 'Delivered') AND created_at >= DATE_SUB(NOW(), ${interval})
+  `, [restaurantId]);
+
+  const totalRevenue = Number(row.totalRevenue) || 0;
+  const totalOrders = Number(row.totalOrders) || 0;
+
+  // Let's assume a baseline 30% commission from third-party marketplaces
+  const commissionAvoided = totalRevenue * 0.30;
+  // Let's assume a 2.5% platform fee for our platform
+  const platformFee = totalRevenue * 0.025;
+  const netSavings = commissionAvoided - platformFee;
+
+  // Generate plain-English AI narrative summary
+  let aiSummary = '';
+  if (totalOrders > 0) {
+    aiSummary = `By routing ${totalOrders} orders directly through your own brand channels instead of third-party apps, you saved an estimated $${commissionAvoided.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} in delivery commissions (based on a 30% marketplace average). After accounting for your 2.5% platform fee, your net recovered profit is $${netSavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}!`;
+  } else {
+    aiSummary = 'No completed direct orders have been processed during this period. Direct-channel promotions and guest loyalty campaigns can help drive direct orders and recover commission revenue.';
+  }
+
+  return {
+    totalRevenue,
+    totalOrders,
+    commissionAvoided,
+    platformFee,
+    netSavings,
+    aiSummary
+  };
 }
 
 module.exports = {
@@ -91,6 +315,6 @@ module.exports = {
   getReportsSummary,
   getRevenueTrend,
   getOrdersTrend,
-  getTopItems
+  getTopItems,
+  getRevenueRecovery
 };
-

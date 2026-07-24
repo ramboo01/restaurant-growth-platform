@@ -19,13 +19,14 @@ function AnalyticsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const [summary, revenue, orders, topItems] = await Promise.all([
+      const [summary, revenue, orders, topItems, recovery] = await Promise.all([
         reportsService.getReportsSummary(period),
         reportsService.getRevenueTrend(period),
         reportsService.getOrdersTrend(period),
-        reportsService.getTopItems(period)
+        reportsService.getTopItems(period),
+        reportsService.getRevenueRecovery(period)
       ]);
-      setReportData({ summary, revenue, orders, topItems });
+      setReportData({ summary, revenue, orders, topItems, recovery });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to fetch reports.');
     } finally {
@@ -42,21 +43,40 @@ function AnalyticsPage() {
   const orderBars = useMemo(() => Array.isArray(reportData?.orders) ? reportData.orders : [], [reportData]);
   const topItems = useMemo(() => Array.isArray(reportData?.topItems) ? reportData.topItems : [], [reportData]);
   const topSellingMenuItems = useMemo(() => Array.isArray(reportData?.topItems) ? reportData.topItems : [], [reportData]);
+  const recovery = reportData?.recovery;
 
   const maxRevenue = useMemo(() => Math.max(...revenueBars, 1), [revenueBars]);
   const maxOrders = useMemo(() => Math.max(...orderBars, 1), [orderBars]);
 
   return (
     <div className="container-fluid px-0">
-      <div className="d-flex justify-content-between align-items-start gap-3 mb-4">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
           <p className="text-uppercase text-secondary small fw-semibold mb-2">Analytics & Reports</p>
           <h1 className="h3 mb-1">Analytics</h1>
-          <p className="text-secondary mb-0">Sales and item performance from live data.</p>
+          <p className="text-secondary mb-0">Sales, item performance, and platform ROI from live data.</p>
         </div>
-        <Link className="btn btn-outline-secondary btn-sm" to="/owner">
-          Back to Owner Home
-        </Link>
+        <div className="d-flex align-items-center gap-3">
+          <div className="d-flex align-items-center gap-2">
+            <label className="form-label mb-0 text-secondary small fw-semibold" htmlFor="analyticsDateFilter">
+              Period:
+            </label>
+            <select
+              className="form-select form-select-sm"
+              id="analyticsDateFilter"
+              onChange={(event) => setDateFilter(event.target.value)}
+              value={dateFilter}
+              style={{ width: '130px' }}
+            >
+              <option>Today</option>
+              <option>This Week</option>
+              <option>This Month</option>
+            </select>
+          </div>
+          <Link className="btn btn-outline-secondary btn-sm" to="/owner">
+            Back to Owner Home
+          </Link>
+        </div>
       </div>
 
       {isLoading ? (
@@ -86,26 +106,47 @@ function AnalyticsPage() {
               </div>
             ))}
           </div>
+
+          {/* Revenue Recovery & ROI card */}
+          {recovery && (
+            <div className="card border-0 bg-gradient-recovery mb-4 shadow-sm">
+              <div className="card-body p-4 text-white">
+                <div className="d-flex align-items-center gap-2 mb-3">
+                  <i className="bi bi-shield-check h4 mb-0 text-warning"></i>
+                  <h3 className="h5 mb-0 fw-bold">Revenue Recovery & Net Platform ROI</h3>
+                </div>
+                <div className="row g-3 mb-3">
+                  <div className="col-12 col-md-4">
+                    <p className="text-white-50 small mb-1">Commission Avoided (30% Marketplace)</p>
+                    <h4 className="fw-bold text-warning mb-0">
+                      +${Number(recovery.commissionAvoided || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </h4>
+                  </div>
+                  <div className="col-12 col-md-4">
+                    <p className="text-white-50 small mb-1">Platform Fee (2.5%)</p>
+                    <h4 className="fw-bold text-danger mb-0">
+                      -${Number(recovery.platformFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </h4>
+                  </div>
+                  <div className="col-12 col-md-4">
+                    <p className="text-white-50 small mb-1">Net Direct Savings</p>
+                    <h4 className="fw-bold mb-0" style={{ color: '#2ecc71', textShadow: '0 0 10px rgba(46, 204, 113, 0.2)' }}>
+                      +${Number(recovery.netSavings || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </h4>
+                  </div>
+                </div>
+                <div className="p-3 rounded bg-white bg-opacity-10 d-flex gap-2 align-items-start">
+                  <i className="bi bi-cpu text-info mt-1"></i>
+                  <div>
+                    <p className="small mb-1 fw-semibold text-info">AI Operational Insight</p>
+                    <p className="small mb-0 text-white-50" style={{ fontStyle: 'italic' }}>{recovery.aiSummary}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
-
-      <div className="row g-3 mb-4">
-        <div className="col-12 col-lg-4">
-          <label className="form-label" htmlFor="analyticsDateFilter">
-            Date filter
-          </label>
-          <select
-            className="form-select"
-            id="analyticsDateFilter"
-            onChange={(event) => setDateFilter(event.target.value)}
-            value={dateFilter}
-          >
-            <option>Today</option>
-            <option>This Week</option>
-            <option>This Month</option>
-          </select>
-        </div>
-      </div>
 
       <div className="row g-4 mb-4">
         <div className="col-12 col-xl-6">

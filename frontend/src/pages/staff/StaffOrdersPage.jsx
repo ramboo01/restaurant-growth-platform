@@ -1,17 +1,125 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { mockOrders } from '../../data/staffOrdersData.js';
+import LoadingState from '../../components/feedback/LoadingState.jsx';
+import EmptyState from '../../components/feedback/EmptyState.jsx';
+import { fetchOrders, updateOrderStatus } from '../../services/orderService.js';
+import { useSocket } from '../../context/SocketContext.jsx';
 
-const statusOrder = ['New', 'Preparing', 'Ready', 'Completed'];
+const statusOrder = ['Pending', 'Preparing', 'Ready', 'Completed'];
 
 function formatCurrency(value) {
-  return `$${value.toFixed(2)}`;
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value) || 0);
+}
+
+function normalizeOrder(order) {
+  return {
+    id: order.id,
+    customerName: order.customerName ?? order.customer_name ?? 'Unknown',
+    orderNumber: order.orderNumber ?? order.order_number ?? '',
+    orderStatus: order.orderStatus ?? order.order_status ?? 'Pending',
+    totalAmount: Number(order.totalAmount ?? order.total_amount ?? 0),
+    createdAt: order.createdAt ?? order.created_at ?? '',
+    items: Array.isArray(order.items) 
+      ? order.items 
+      : typeof order.items === 'string' 
+        ? JSON.parse(order.items) 
+        : [],
+    fulfillmentDetails: typeof order.fulfillmentDetails === 'string'
+      ? JSON.parse(order.fulfillmentDetails)
+      : order.fulfillmentDetails || {}
+  };
 }
 
 function StaffOrdersPage() {
-  const [orders, setOrders] = useState(mockOrders);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [toast, setToast] = useState('');
+  const [updatingId, setUpdatingId] = useState('');
+
+  const toastTimerRef = useRef(null);
+  const { socket } = useSocket();
+
+  const loadStaffOrders = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await fetchOrders({
+        limit: 50,
+        sort: 'created_at',
+        order: 'desc'
+      });
+
+      const list = response.data ?? response.orders ?? [];
+      setOrders(list.map(normalizeOrder));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load staff orders.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStaffOrders();
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewOrder = (orderData) => {
+      const normalized = normalizeOrder(orderData);
+      setOrders(current => {
+        if (current.some(o => o.id === normalized.id)) return current;
+        return [normalized, ...current];
+      });
+      showToast(`New order: ${normalized.orderNumber}`);
+    };
+
+    const handleOrderUpdated = (orderData) => {
+      const normalized = normalizeOrder(orderData);
+      setOrders(current => current.map(o => o.id === normalized.id ? normalized : o));
+    };
+
+    socket.on('newOrder', handleNewOrder);
+    socket.on('orderUpdated', handleOrderUpdated);
+
+    return () => {
+      socket.off('newOrder', handleNewOrder);
+      socket.off('orderUpdated', handleOrderUpdated);
+    };
+  }, [socket]);
+
+  function showToast(message) {
+    setToast(message);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(''), 2500);
+  }
+
+  async function handleAdvanceStatus(order) {
+    const nextStatusMap = {
+      Pending: 'Preparing',
+      Preparing: 'Ready',
+      Ready: 'Completed'
+    };
+    const nextStatus = nextStatusMap[order.orderStatus];
+    if (!nextStatus) return;
+
+    setUpdatingId(order.id);
+    try {
+      await updateOrderStatus(order.id, nextStatus);
+      showToast(`Order status updated successfully.`);
+      await loadStaffOrders();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update order status.');
+    } finally {
+      setUpdatingId('');
+    }
+  }
 
   const summaryCounts = useMemo(() => {
     return statusOrder.reduce((counts, status) => {
@@ -25,7 +133,7 @@ function StaffOrdersPage() {
 
     return orders.filter((order) => {
       const matchesSearch =
-        order.orderId.toLowerCase().includes(normalizedSearch) ||
+        order.orderNumber.toLowerCase().includes(normalizedSearch) ||
         order.customerName.toLowerCase().includes(normalizedSearch);
       const matchesStatus = statusFilter === 'All' || order.orderStatus === statusFilter;
 
@@ -33,26 +141,8 @@ function StaffOrdersPage() {
     });
   }, [orders, searchTerm, statusFilter]);
 
-  function advanceStatus(orderId) {
-    setOrders((current) =>
-      current.map((order) => {
-        if (order.orderId !== orderId) {
-          return order;
-        }
-
-        const currentIndex = statusOrder.indexOf(order.orderStatus);
-        const nextStatus = statusOrder[Math.min(currentIndex + 1, statusOrder.length - 1)];
-
-        return {
-          ...order,
-          orderStatus: nextStatus
-        };
-      })
-    );
-  }
-
   function getActionLabel(status) {
-    if (status === 'New') return 'Accept';
+    if (status === 'Pending') return 'Accept';
     if (status === 'Preparing') return 'Mark Ready';
     if (status === 'Ready') return 'Complete';
     return 'Completed';
@@ -60,16 +150,30 @@ function StaffOrdersPage() {
 
   return (
     <div className="container-fluid px-0">
+      {toast && <div className="alert alert-success py-2">{toast}</div>}
+
       <div className="d-flex justify-content-between align-items-start gap-3 mb-4">
         <div>
           <p className="text-uppercase text-secondary small fw-semibold mb-2">Staff Orders</p>
           <h1 className="h3 mb-1">Order Queue</h1>
-          <p className="text-secondary mb-0">Live local queue for staff operations.</p>
+          <p className="text-secondary mb-0">Live order queue for staff operations.</p>
         </div>
-        <Link className="btn btn-outline-secondary btn-sm" to="/staff">
-          Back to Staff Home
-        </Link>
+        <div className="d-flex gap-2">
+          <button className="btn btn-outline-secondary btn-sm" onClick={loadStaffOrders} disabled={loading}>
+            Refresh
+          </button>
+          <Link className="btn btn-outline-secondary btn-sm" to="/staff">
+            Back to Staff Home
+          </Link>
+        </div>
       </div>
+
+      {error && (
+        <div className="alert alert-danger d-flex justify-content-between align-items-center">
+          <span>{error}</span>
+          <button className="btn btn-outline-danger btn-sm" onClick={loadStaffOrders}>Retry</button>
+        </div>
+      )}
 
       <div className="row g-3 mb-4">
         {statusOrder.map((status) => (
@@ -77,7 +181,7 @@ function StaffOrdersPage() {
             <div className="card border-0 h-100 guest-info-card">
               <div className="card-body">
                 <p className="text-secondary small mb-1">{status} Orders</p>
-                <h2 className="h4 mb-0">{summaryCounts[status]}</h2>
+                <h2 className="h4 mb-0">{summaryCounts[status] ?? 0}</h2>
               </div>
             </div>
           </div>
@@ -107,7 +211,7 @@ function StaffOrdersPage() {
             onChange={(event) => setStatusFilter(event.target.value)}
             value={statusFilter}
           >
-            <option>All</option>
+            <option value="All">All</option>
             {statusOrder.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -117,16 +221,18 @@ function StaffOrdersPage() {
         </div>
       </div>
 
-      {filteredOrders.length ? (
+      {loading ? (
+        <LoadingState message="Loading staff order queue..." />
+      ) : filteredOrders.length ? (
         <div className="row g-3">
           {filteredOrders.map((order) => (
-            <div className="col-12 col-md-6 col-xxl-4" key={order.orderId}>
+            <div className="col-12 col-md-6 col-xxl-4" key={order.id}>
               <article className="card border-0 guest-cart-item h-100">
                 <div className="card-body d-flex flex-column">
                   <div className="d-flex justify-content-between gap-3 mb-3">
                     <div>
-                      <p className="text-secondary small mb-1">Order ID</p>
-                      <h2 className="h6 mb-0">{order.orderId}</h2>
+                      <p className="text-secondary small mb-1">Order Number</p>
+                      <h2 className="h6 mb-0">{order.orderNumber}</h2>
                     </div>
                     <span className="badge text-bg-light border">{order.orderStatus}</span>
                   </div>
@@ -138,29 +244,25 @@ function StaffOrdersPage() {
                     </div>
                     <div className="d-flex justify-content-between gap-3">
                       <span className="text-secondary">Type</span>
-                      <span>{order.orderType}</span>
+                      <span>{order.fulfillmentDetails?.type || 'Pickup'}</span>
                     </div>
                     <div className="d-flex justify-content-between gap-3">
                       <span className="text-secondary">Time</span>
-                      <span>{order.orderTime}</span>
-                    </div>
-                    <div className="d-flex justify-content-between gap-3">
-                      <span className="text-secondary">Items</span>
-                      <span>{order.itemCount}</span>
+                      <span>{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : '-'}</span>
                     </div>
                     <div className="d-flex justify-content-between gap-3">
                       <span className="text-secondary">Total</span>
-                      <span>{formatCurrency(order.total)}</span>
+                      <span>{formatCurrency(order.totalAmount)}</span>
                     </div>
                   </div>
 
                   <button
                     className="btn btn-primary mt-auto"
-                    disabled={order.orderStatus === 'Completed'}
-                    onClick={() => advanceStatus(order.orderId)}
+                    disabled={['Completed', 'Cancelled'].includes(order.orderStatus) || updatingId === order.id}
+                    onClick={() => handleAdvanceStatus(order)}
                     type="button"
                   >
-                    {getActionLabel(order.orderStatus)}
+                    {updatingId === order.id ? 'Updating...' : getActionLabel(order.orderStatus)}
                   </button>
                 </div>
               </article>
@@ -168,7 +270,7 @@ function StaffOrdersPage() {
           ))}
         </div>
       ) : (
-        <div className="alert alert-light border mb-0">No orders found.</div>
+        <EmptyState title="No orders found." message="Try adjusting your search or status filter." />
       )}
     </div>
   );
