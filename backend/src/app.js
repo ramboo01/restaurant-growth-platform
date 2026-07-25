@@ -25,6 +25,7 @@ const customerRoutes = require('./modules/customer/customer.routes');
 const notificationRoutes = require('./modules/notification/notification.routes');
 const reportRoutes = require('./modules/reports/report.routes');
 const supplierRoutes = require('./modules/supplier/supplier.routes');
+const campaignRoutes = require('./modules/campaign/campaign.routes');
 const uploadRoutes = require('./modules/upload/upload.routes');
 const publicRoutes = require('./modules/public/public.routes');
 
@@ -86,6 +87,7 @@ app.use('/api/customers', authorize('Admin', 'Owner', 'Manager'), verifyRestaura
 app.use('/api/notifications', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, notificationRoutes);
 app.use('/api/reports', authorize('Admin', 'Owner'), verifyRestaurantOwnership, reportRoutes);
 app.use('/api/suppliers', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, supplierRoutes);
+app.use('/api/campaigns', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, campaignRoutes);
 app.use('/api/upload', uploadRoutes);
 app.get('/api/restaurants/:restaurantId/menu', authorize('Owner', 'Manager'), verifyRestaurantOwnership, async (req, res, next) => {
   try {

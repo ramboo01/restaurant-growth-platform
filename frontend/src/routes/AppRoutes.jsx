@@ -29,6 +29,7 @@ import LoyaltyDashboardPage from '../pages/owner/LoyaltyDashboardPage.jsx';
 import InventoryPage from '../pages/owner/InventoryPage.jsx';
 import AnalyticsPage from '../pages/owner/AnalyticsPage.jsx';
 import SupplierPage from '../pages/owner/SupplierPage.jsx';
+import CampaignStudioPage from '../pages/owner/CampaignStudioPage.jsx';
 import StaffPage from '../pages/owner/StaffPage.jsx';
 import SettingsPage from '../pages/owner/SettingsPage.jsx';
 import StaffHomePage from '../pages/staff/StaffHomePage.jsx';
@@ -66,7 +67,7 @@ function AppRoutes() {
             <Route path="orders" element={<OwnerOrdersPage />} />
             <Route path="86-board" element={<Owner86BoardPage />} />
             <Route path="site-app" element={<OwnerModulePlaceholderPage moduleKey="site-app" />} />
-            <Route path="campaigns" element={<OwnerModulePlaceholderPage moduleKey="campaigns" />} />
+            <Route path="campaigns" element={<CampaignStudioPage />} />
             <Route path="loyalty" element={<LoyaltyDashboardPage />} />
             <Route path="seo" element={<OwnerModulePlaceholderPage moduleKey="seo" />} />
             <Route path="reviews" element={<OwnerModulePlaceholderPage moduleKey="reviews" />} />

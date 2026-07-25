@@ -19,17 +19,17 @@ This document serves as our master tracking sheet for all remaining features, sc
 
 ## 🗺️ Sprints & Phase Sequencing
 
-### 🌀 Sprint 1: Real-Time Event Sync & Notifications (Phase 2 Core)
+### 🌀 Sprint 1: Real-Time Event Sync & Notifications (Phase 2 Core) - [COMPLETED]
 - **Goal:** Enable live updates across all active terminals (Owner, Staff, Guest, Driver) without page refreshes.
-- [ ] Implement `Socket.io` connection on both backend and frontend.
-- [ ] Configure `NEW_ORDER_RECEIVED` event to trigger audible alarm and incremental badge indicator on Kitchen Display.
-- [ ] Configure `ORDER_STATUS_CHANGED` events to auto-update Guest Tracking UI (`GST-005`) and Driver Board.
-- [ ] Broadcast real-time `MENU_ITEM_availability_CHANGED` (86 Board updates) to all active Guest storefronts.
+- [x] Implement `Socket.io` connection on both backend and frontend.
+- [x] Configure `NEW_ORDER_RECEIVED` event to trigger audible alarm and incremental badge indicator on Kitchen Display.
+- [x] Configure `ORDER_STATUS_CHANGED` events to auto-update Guest Tracking UI (`GST-005`) and Driver Board.
+- [x] Broadcast real-time `MENU_ITEM_availability_CHANGED` (86 Board updates) to all active Guest storefronts.
 
-### ✉️ Sprint 2: Campaign Studio & Segment Builder
+### ✉️ Sprint 2: Campaign Studio & Segment Builder - [COMPLETED]
 - **Goal:** Set up promotional tools, automation triggers, and guest preferences.
-- [ ] **OWN-009 (Campaign Builder):** Dashboard to create SMS/Email/WhatsApp campaigns.
-- [ ] **OWN-010 (Segment Builder):** Filter customer list by loyalty points, tiers, RFM segments, and opt-ins.
+- [x] **OWN-009 (Campaign Builder):** Dashboard to create SMS/Email/WhatsApp campaigns.
+- [x] **OWN-010 (Segment Builder):** Filter customer list by loyalty points, tiers, RFM segments, and opt-ins.
 - [ ] **GST-009 (Guest Preference Center):** Guest options to update contact info, notification channels, and opt-out preferences.
 
 ### 🤖 Sprint 3: AI Website, Reviews & SEO Autopilot
@@ -79,8 +79,8 @@ This document serves as our master tracking sheet for all remaining features, sc
 - [ ] **OWN-006 Scheduled Menus & override approvals** (Placeholder)
 - [ ] **OWN-007 Site & App Content Editor** (Placeholder)
 - [ ] **OWN-008 Delivery boundary configurator** (Placeholder)
-- [ ] **OWN-009 Campaign builder dashboard** (Placeholder)
-- [ ] **OWN-010 Guest preference compliance / segment builder** (Placeholder)
+- [x] **OWN-009 Campaign builder dashboard** (Built)
+- [x] **OWN-010 Guest preference compliance / segment builder** (Built)
 - [ ] **OWN-012 Local SEO Autopilot connection** (Placeholder)
 - [ ] **OWN-013 Reputation review aggregator** (Placeholder)
 - [ ] **OWN-014 Driver fee & zone setup** (Placeholder)
