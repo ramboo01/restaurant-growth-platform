@@ -94,20 +94,29 @@ function GuestOrderTrackingPage() {
       socket.emit('joinRestaurantRoom', order.restaurantId);
     });
 
-    socket.on('orderUpdated', (updatedOrder) => {
+    const handleUpdate = (updatedOrder) => {
       console.log('[Tracking Socket] Order updated event:', updatedOrder);
-      if (String(updatedOrder.orderNumber) === String(orderId) || String(updatedOrder.id) === String(order?.id)) {
+      const updatedNum = updatedOrder.orderNumber || updatedOrder.order_number;
+      const updatedId = updatedOrder.id;
+      if (String(updatedNum) === String(orderId) || String(updatedId) === String(order?.id)) {
         setOrder(prev => {
           if (!prev) return updatedOrder;
-          if (prev.orderStatus !== updatedOrder.orderStatus) {
-            return { ...prev, orderStatus: updatedOrder.orderStatus };
+          const newStatus = updatedOrder.orderStatus || updatedOrder.order_status;
+          if (prev.orderStatus !== newStatus) {
+            return { ...prev, orderStatus: newStatus };
           }
           return prev;
         });
       }
-    });
+    };
+
+    socket.on('orderUpdated', handleUpdate);
+    socket.on('ORDER_STATUS_CHANGED', handleUpdate);
 
     return () => {
+      socket.off('orderUpdated', handleUpdate);
+      socket.off('ORDER_STATUS_CHANGED', handleUpdate);
+      socket.emit('leaveRestaurantRoom', order.restaurantId);
       socket.disconnect();
     };
   }, [orderId, order?.restaurantId, order?.id]);

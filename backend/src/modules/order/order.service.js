@@ -95,6 +95,13 @@ async function createOrder(payload) {
     console.error('[Notification] Failed to auto-create order notification:', err.message);
   }
 
+  try {
+    const socketUtils = require('../../utils/socket');
+    socketUtils.getIO().to(`restaurant_${order.restaurantId}`).emit('NEW_ORDER', order);
+  } catch (err) {
+    console.error('[Socket] Failed to emit NEW_ORDER event:', err.message);
+  }
+
   return order;
 }
 
@@ -218,6 +225,14 @@ async function updateOrderStatus(id, status) {
         console.error('[CRM/Loyalty/Inventory] Failed to sync on status update:', err.message);
       }
     }
+    
+    try {
+      const socketUtils = require('../../utils/socket');
+      socketUtils.getIO().to(`restaurant_${order.restaurantId}`).emit('ORDER_STATUS_CHANGED', order);
+    } catch (err) {
+      console.error('[Socket] Failed to emit ORDER_STATUS_CHANGED event:', err.message);
+    }
+
     return order;
   }
   return null;

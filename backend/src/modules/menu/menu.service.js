@@ -116,8 +116,17 @@ async function updateMenuItem(id, payload) {
       id
     ]
   );
-
-  return result.affectedRows > 0 ? getMenuItemById(id) : null;
+  if (result.affectedRows > 0) {
+    const item = await getMenuItemById(id);
+    try {
+      const socketUtils = require('../../utils/socket');
+      socketUtils.getIO().to(`restaurant_${item.restaurantId}`).emit('MENU_ITEM_UPDATED', item);
+    } catch (err) {
+      console.error('[Socket] Failed to emit MENU_ITEM_UPDATED event:', err.message);
+    }
+    return item;
+  }
+  return null;
 }
 
 async function deleteMenuItem(id) {

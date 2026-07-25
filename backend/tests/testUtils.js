@@ -90,17 +90,20 @@ async function assignUserToRestaurant(userId, restaurantId) {
 }
 
 async function cleanupTestData() {
-  await pool.execute('DELETE FROM notifications WHERE title LIKE ?', ['%Integration%']);
-  await pool.execute('DELETE FROM customers WHERE email LIKE ?', [`%${TEST_EMAIL_DOMAIN}`]);
-  await pool.execute('DELETE FROM loyalty_members WHERE customer_name LIKE ?', ['%Integration%']);
-  await pool.execute('DELETE FROM inventory WHERE supplier LIKE ?', ['%Integration%']);
-  await pool.execute('DELETE FROM drivers WHERE name LIKE ?', ['%Integration%']);
-  await pool.execute('DELETE FROM staff WHERE email LIKE ?', [`%${TEST_EMAIL_DOMAIN}`]);
-  await pool.execute('DELETE FROM orders WHERE order_number LIKE ?', ['INT-%']);
-  await pool.execute('DELETE FROM menu_items WHERE name LIKE ?', ['%Integration%']);
-  await pool.execute('DELETE FROM menu_categories WHERE name LIKE ?', ['%Integration%']);
-  await pool.execute('DELETE FROM restaurants WHERE email LIKE ?', [`%${TEST_EMAIL_DOMAIN}`]);
-  await pool.execute('DELETE FROM users WHERE email LIKE ?', [`%${TEST_EMAIL_DOMAIN}`]);
+  const safeDelete = async (query, params) => {
+    try { await pool.execute(query, params); } catch (err) { /* ignore table missing errors in test cleanup */ }
+  };
+  await safeDelete('DELETE FROM notifications WHERE title LIKE ?', ['%Integration%']);
+  await safeDelete('DELETE FROM customers WHERE email LIKE ?', [`%${TEST_EMAIL_DOMAIN}`]);
+  await safeDelete('DELETE FROM loyalty_members WHERE customer_name LIKE ?', ['%Integration%']);
+  await safeDelete('DELETE FROM inventory WHERE supplier LIKE ?', ['%Integration%']);
+  await safeDelete('DELETE FROM drivers WHERE name LIKE ?', ['%Integration%']);
+  await safeDelete('DELETE FROM staff WHERE email LIKE ?', [`%${TEST_EMAIL_DOMAIN}`]);
+  await safeDelete('DELETE FROM orders WHERE order_number LIKE ?', ['INT-%']);
+  await safeDelete('DELETE FROM menu_items WHERE name LIKE ?', ['%Integration%']);
+  await safeDelete('DELETE FROM menu_categories WHERE name LIKE ?', ['%Integration%']);
+  await safeDelete('DELETE FROM restaurants WHERE email LIKE ?', [`%${TEST_EMAIL_DOMAIN}`]);
+  await safeDelete('DELETE FROM users WHERE email LIKE ?', [`%${TEST_EMAIL_DOMAIN}`]);
 }
 
 function getFixturePath(filename) {

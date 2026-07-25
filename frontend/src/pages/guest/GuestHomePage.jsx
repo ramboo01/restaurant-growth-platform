@@ -124,6 +124,48 @@ function GuestHomePage() {
     }
   }
 
+  // Real-time 86 board socket updates for guest storefront
+  useEffect(() => {
+    if (!selectedRestaurant?.id) return undefined;
+
+    const socketUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('connect', () => {
+      console.log('[Storefront Socket] Connected for 86 board updates:', socket.id);
+      socket.emit('joinRestaurantRoom', selectedRestaurant.id);
+    });
+
+    const handleMenuItemUpdated = (updatedItem) => {
+      console.log('[Storefront Socket] Menu item availability update:', updatedItem);
+      setMenuItems((prevItems) =>
+        prevItems.map((item) => {
+          if (String(item.id) === String(updatedItem.id)) {
+            const avail = updatedItem.isAvailable !== 0 && updatedItem.is_available !== 0;
+            return {
+              ...item,
+              isAvailable: avail,
+              is86d: !avail
+            };
+          }
+          return item;
+        })
+      );
+    };
+
+    socket.on('MENU_ITEM_UPDATED', handleMenuItemUpdated);
+    socket.on('MENU_ITEM_AVAILABILITY_CHANGED', handleMenuItemUpdated);
+
+    return () => {
+      socket.off('MENU_ITEM_UPDATED', handleMenuItemUpdated);
+      socket.off('MENU_ITEM_AVAILABILITY_CHANGED', handleMenuItemUpdated);
+      socket.emit('leaveRestaurantRoom', selectedRestaurant.id);
+      socket.disconnect();
+    };
+  }, [selectedRestaurant?.id]);
+
   // Real-time updates for guest storefront (e.g., 86 board sync)
   useEffect(() => {
     if (!selectedRestaurant) return;

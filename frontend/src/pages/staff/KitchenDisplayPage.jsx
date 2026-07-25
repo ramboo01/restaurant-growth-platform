@@ -97,11 +97,15 @@ function KitchenDisplayPage() {
     };
 
     socket.on('newOrder', handleNewOrder);
+    socket.on('NEW_ORDER', handleNewOrder);
     socket.on('orderUpdated', handleOrderUpdated);
+    socket.on('ORDER_STATUS_CHANGED', handleOrderUpdated);
 
     return () => {
       socket.off('newOrder', handleNewOrder);
+      socket.off('NEW_ORDER', handleNewOrder);
       socket.off('orderUpdated', handleOrderUpdated);
+      socket.off('ORDER_STATUS_CHANGED', handleOrderUpdated);
     };
   }, [socket]);
 
