@@ -28,6 +28,8 @@ const supplierRoutes = require('./modules/supplier/supplier.routes');
 const campaignRoutes = require('./modules/campaign/campaign.routes');
 const uploadRoutes = require('./modules/upload/upload.routes');
 const publicRoutes = require('./modules/public/public.routes');
+const reviewRoutes = require('./modules/review/review.routes');
+const seoRoutes = require('./modules/seo/seo.routes');
 
 const app = express();
 const allowedOrigins = FRONTEND_URL
@@ -88,6 +90,8 @@ app.use('/api/notifications', authorize('Admin', 'Owner', 'Manager'), verifyRest
 app.use('/api/reports', authorize('Admin', 'Owner'), verifyRestaurantOwnership, reportRoutes);
 app.use('/api/suppliers', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, supplierRoutes);
 app.use('/api/campaigns', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, campaignRoutes);
+app.use('/api/reviews', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, reviewRoutes);
+app.use('/api/seo', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, seoRoutes);
 app.use('/api/upload', uploadRoutes);
 app.get('/api/restaurants/:restaurantId/menu', authorize('Owner', 'Manager'), verifyRestaurantOwnership, async (req, res, next) => {
   try {

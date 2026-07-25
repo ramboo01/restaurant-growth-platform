@@ -35,39 +35,39 @@ Guest (Places Order) ➔ Owner (Manages Menu/86) ➔ Staff (Kitchen Cooks) ➔ D
 ---
 
 ### Step 1.1: Owner Master Menu & 86 Board ➔ Guest Storefront Connection
-- [ ] **Backend API:** Verify `/api/menu` and `/api/menu/categories` endpoints return complete menu hierarchy with modifier groups and availability flags.
-- [ ] **Guest Storefront (`GuestHomePage.jsx`):** Replace static mock data with real API fetch from backend menu endpoint.
-- [ ] **Channel & Category Filtering:** Enable category tab selection and filter out items where `isAvailable = false` or item is toggled 86'd.
-- [ ] **86 Board Sync (`Owner86BoardPage.jsx`):** Ensure toggling 86 status in Owner dashboard updates `isAvailable` in MySQL DB immediately and updates storefront.
+- [x] **Backend API:** Verify `/api/menu` and `/api/menu/categories` endpoints return complete menu hierarchy with modifier groups and availability flags.
+- [x] **Guest Storefront (`GuestHomePage.jsx`):** Replace static mock data with real API fetch from backend menu endpoint.
+- [x] **Channel & Category Filtering:** Enable category tab selection and filter out items where `isAvailable = false` or item is toggled 86'd.
+- [x] **86 Board Sync (`Owner86BoardPage.jsx`):** Ensure toggling 86 status in Owner dashboard updates `isAvailable` in MySQL DB immediately and updates storefront.
 
 ### Step 1.2: Item Modifiers, Cart Engine & Real Checkout
-- [ ] **Item Detail Modal (`ItemDetailModal.jsx`):** Build interactive modal displaying item details, image, description, and required/optional modifier groups (e.g., Size, Toppings, Choice of Sauce) with live price recalculation.
-- [ ] **Persistent Cart System:** Upgrade cart state management to persist across browser reloads and enforce minimum delivery order rules.
-- [ ] **Guest Checkout (`GuestCheckoutPage.jsx`):**
+- [x] **Item Detail Modal (`ItemDetailModal.jsx`):** Build interactive modal displaying item details, image, description, and required/optional modifier groups (e.g., Size, Toppings, Choice of Sauce) with live price recalculation.
+- [x] **Persistent Cart System:** Upgrade cart state management to persist across browser reloads and enforce minimum delivery order rules.
+- [x] **Guest Checkout (`GuestCheckoutPage.jsx`):**
   - Connect form to write directly to `/api/orders` table in MySQL.
   - Implement Delivery vs Pickup fulfillment selection with lead time and address validation.
   - Complete simulated/live payment authorization response to generate confirmed Order record.
-- [ ] **Order Confirmation Page (`GuestOrderSuccessPage.jsx`):** Render order summary, transaction ID, estimated ready time, and redirect link to live tracking.
+- [x] **Order Confirmation Page (`GuestOrderSuccessPage.jsx`):** Render order summary, transaction ID, estimated ready time, and redirect link to live tracking.
 
 ### Step 1.3: Kitchen Display System (KDS) & Order Status Pipeline
-- [ ] **Staff Order Queue (`StaffOrdersPage.jsx` / `KitchenDisplayPage.jsx`):**
+- [x] **Staff Order Queue (`StaffOrdersPage.jsx` / `KitchenDisplayPage.jsx`):**
   - Fetch active orders from backend `/api/orders` API grouped by status (`PENDING`, `PREPARING`, `READY_FOR_PICKUP`).
   - Render line items, selected modifiers, customer notes, and fulfillment type (Pickup/Delivery).
-- [ ] **Order Status Transitions:** Enable one-tap status updates:
+- [x] **Order Status Transitions:** Enable one-tap status updates:
   - `PENDING` ➔ `PREPARING` (Kitchen starts cooking)
   - `PREPARING` ➔ `READY_FOR_PICKUP` / `READY_FOR_DISPATCH`
 
 ### Step 1.4: Driver Dispatch Board & Live Guest Tracking
-- [ ] **Driver Orders Board (`DriverOrdersPage.jsx`):**
+- [x] **Driver Orders Board (`DriverOrdersPage.jsx`):**
   - Display orders with `READY_FOR_DISPATCH` status.
   - Implement driver actions: `ACCEPT_ORDER`, `PICKED_UP / OUT_FOR_DELIVERY`, and `DELIVERED`.
-- [ ] **Guest Live Order Tracking (`GuestOrderTrackingPage.jsx`):**
+- [x] **Guest Live Order Tracking (`GuestOrderTrackingPage.jsx`):**
   - Connect to backend `/api/orders/:orderId` to display real-time status step indicator (`Order Placed` ➔ `Preparing` ➔ `Out for Delivery` ➔ `Delivered`).
   - Calculate estimated delivery time dynamically based on status transitions.
 
 ### Step 1.5: End-to-End 4-Role Live Testing Cycle
-- [ ] Open 4 separate browser windows (Owner, Guest, Kitchen Staff, Driver).
-- [ ] Perform a full live order cycle:
+- [x] Open 4 separate browser windows (Owner, Guest, Kitchen Staff, Driver).
+- [x] Perform a full live order cycle:
   1. Owner checks menu item is available.
   2. Guest configures modifiers, places order at Checkout.
   3. Kitchen Staff sees order arrive, changes status to `PREPARING` then `READY`.
@@ -80,10 +80,10 @@ Guest (Places Order) ➔ Owner (Manages Menu/86) ➔ Staff (Kitchen Cooks) ➔ D
 
 **Goal:** Eliminate manual page refreshes across all roles using instant WebSocket event broadcasting.
 
-- [ ] **Socket.io Infrastructure:** Set up WebSocket server in Express backend and client socket listener context in React frontend.
-- [ ] **Live 86 Board Event Broadcast (`ITEM_86_UPDATED`):** Toggling 86 status in Owner/Staff dashboard instantly hides or greys out the item on all connected Guest storefront browsers.
-- [ ] **Instant Kitchen Order Alert (`NEW_ORDER_RECEIVED`):** Kitchen Display Screen auto-receives new guest orders instantly with an audible chime notification.
-- [ ] **Live Status Broadcast (`ORDER_STATUS_CHANGED`):** Any status change by Kitchen or Driver instantly updates Guest Tracking UI without requiring polling.
+- [x] **Socket.io Infrastructure:** Set up WebSocket server in Express backend and client socket listener context in React frontend.
+- [x] **Live 86 Board Event Broadcast (`ITEM_86_UPDATED`):** Toggling 86 status in Owner/Staff dashboard instantly hides or greys out the item on all connected Guest storefront browsers.
+- [x] **Instant Kitchen Order Alert (`NEW_ORDER_RECEIVED`):** Kitchen Display Screen auto-receives new guest orders instantly with an audible chime notification.
+- [x] **Live Status Broadcast (`ORDER_STATUS_CHANGED`):** Any status change by Kitchen or Driver instantly updates Guest Tracking UI without requiring polling.
 
 ---
 
@@ -92,14 +92,14 @@ Guest (Places Order) ➔ Owner (Manages Menu/86) ➔ Staff (Kitchen Cooks) ➔ D
 **Goal:** Driver customer retention, repeat orders, and guest lifetime value tracking.
 
 ### Step 3.1: Loyalty Program Configuration & Redemption
-- [ ] **Owner Loyalty Config (`LoyaltyDashboardPage.jsx`):** Define points accrual rate (e.g., $1 spent = 10 points) and create reward catalog items (e.g., 500 points = Free Drink).
-- [ ] **Guest Earn & Redeem at Checkout:**
+- [x] **Owner Loyalty Config (`LoyaltyDashboardPage.jsx`):** Define points accrual rate (e.g., $1 spent = 10 points) and create reward catalog items (e.g., 500 points = Free Drink).
+- [x] **Guest Earn & Redeem at Checkout:**
   - Auto-calculate points earned upon order completion.
   - Allow authenticated guests to select and redeem available rewards at checkout, with server-side point validation.
 
 ### Step 3.2: Guest Graph & RFM Segmentation
-- [ ] **RFM Automated Tiers:** Implement automated nightly calculation classifying guests into `New`, `Active`, `VIP`, `Lapsed`, and `Churned`.
-- [ ] **Unified Guest Profile (`GuestProfilePage.jsx`):** Consolidated timeline view showing complete order history, total spend, average order value (AOV), and loyalty log.
+- [x] **RFM Automated Tiers:** Implement automated nightly calculation classifying guests into `New`, `Active`, `VIP`, `Lapsed`, and `Churned`.
+- [x] **Unified Guest Profile (`GuestProfilePage.jsx`):** Consolidated timeline view showing complete order history, total spend, average order value (AOV), and loyalty log.
 
 ---
 
@@ -107,11 +107,11 @@ Guest (Places Order) ➔ Owner (Manages Menu/86) ➔ Staff (Kitchen Cooks) ➔ D
 
 **Goal:** Automate stock tracking and connect reporting widgets to real database records.
 
-- [ ] **Recipe & Stock Auto-Deduction:** Deduct ingredient stock from `InventoryPage.jsx` automatically when guest orders are marked `DELIVERED` or `COMPLETED`.
-- [ ] **Real Analytics Engine (`AnalyticsPage.jsx`):**
+- [x] **Recipe & Stock Auto-Deduction:** Deduct ingredient stock from `InventoryPage.jsx` automatically when guest orders are marked `DELIVERED` or `COMPLETED`.
+- [x] **Real Analytics Engine (`AnalyticsPage.jsx`):**
   - Replace mock revenue widgets with SQL queries calculating daily, weekly, and monthly gross revenue.
   - Render top-selling items chart and peak order hours histogram.
-- [ ] **Persisted Restaurant Settings (`SettingsPage.jsx`):** Store restaurant operating hours, delivery radius, tax rates, and currency settings in MySQL database.
+- [x] **Persisted Restaurant Settings (`SettingsPage.jsx`):** Store restaurant operating hours, delivery radius, tax rates, and currency settings in MySQL database.
 
 ---
 
@@ -119,10 +119,10 @@ Guest (Places Order) ➔ Owner (Manages Menu/86) ➔ Staff (Kitchen Cooks) ➔ D
 
 **Goal:** Scale the platform with automated marketing, SEO, reviews, and franchise management.
 
-- [ ] **Campaign Studio (`CampaignsPage.jsx`):** Abandoned cart recovery, automated win-back SMS/Email triggers, and guest frequency capping.
-- [ ] **Review Engine & AI Replies (`ReviewsPage.jsx`):** Google Business Profile review aggregation, sentiment analysis, and AI-drafted reply approvals.
-- [ ] **SEO Autopilot (`SeoPage.jsx`):** Dynamic landing page generator and third-party listing sync.
-- [ ] **Multi-Location Franchise & Admin Console:** Regional HQ permissions, national menu push, brand compliance guardrails, and Platform Admin support tools.
+- [x] **Campaign Studio (`CampaignsPage.jsx`):** Abandoned cart recovery, automated win-back SMS/Email triggers, and guest frequency capping.
+- [x] **Review Engine & AI Replies (`ReviewsPage.jsx`):** Google Business Profile review aggregation, sentiment analysis, and AI-drafted reply approvals.
+- [x] **SEO Autopilot (`SeoPage.jsx`):** Dynamic landing page generator and third-party listing sync.
+- [x] **Multi-Location Franchise & Admin Console:** Regional HQ permissions, national menu push, brand compliance guardrails, and Platform Admin support tools.
 
 ---
 

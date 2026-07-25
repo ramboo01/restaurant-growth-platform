@@ -118,6 +118,62 @@ async function deleteStaff(id) {
   return result.affectedRows > 0;
 }
 
+async function clockInStaff(staffId, restaurantId) {
+  const pool = getDatabasePool();
+  const [active] = await pool.execute(
+    'SELECT id FROM staff_attendance WHERE staff_id = ? AND status = "Active" LIMIT 1',
+    [staffId]
+  );
+  if (active.length > 0) {
+    return { error: 'Staff member is already clocked in.' };
+  }
+
+  const [result] = await pool.execute(
+    'INSERT INTO staff_attendance (staff_id, restaurant_id, status) VALUES (?, ?, "Active")',
+    [staffId, restaurantId]
+  );
+
+  return { id: result.insertId, staffId, restaurantId, status: 'Active', clockIn: new Date() };
+}
+
+async function clockOutStaff(staffId) {
+  const pool = getDatabasePool();
+  const [rows] = await pool.execute(
+    'SELECT id, clock_in FROM staff_attendance WHERE staff_id = ? AND status = "Active" ORDER BY id DESC LIMIT 1',
+    [staffId]
+  );
+  if (rows.length === 0) {
+    return { error: 'No active clock-in session found for this staff member.' };
+  }
+
+  const session = rows[0];
+  const clockOutTime = new Date();
+  const clockInTime = new Date(session.clock_in);
+  const diffHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
+  const totalHours = Math.max(0.01, Number(diffHours.toFixed(2)));
+
+  await pool.execute(
+    'UPDATE staff_attendance SET clock_out = ?, total_hours = ?, status = "Completed" WHERE id = ?',
+    [clockOutTime, totalHours, session.id]
+  );
+
+  return { id: session.id, staffId, clockOut: clockOutTime, totalHours, status: 'Completed' };
+}
+
+async function getAttendanceHistory(restaurantId) {
+  const pool = getDatabasePool();
+  const [rows] = await pool.execute(
+    `SELECT a.id, a.staff_id AS staffId, s.name AS staffName, s.role, a.clock_in AS clockIn, a.clock_out AS clockOut, a.total_hours AS totalHours, a.status
+     FROM staff_attendance a
+     JOIN staff s ON a.staff_id = s.id
+     WHERE a.restaurant_id = ?
+     ORDER BY a.clock_in DESC
+     LIMIT 50`,
+    [restaurantId]
+  );
+  return rows;
+}
+
 module.exports = {
   STAFF_ROLES,
   STAFF_STATUSES,
@@ -126,5 +182,9 @@ module.exports = {
   getStaffById,
   getStaffByRestaurantId,
   updateStaff,
-  deleteStaff
+  deleteStaff,
+  clockInStaff,
+  clockOutStaff,
+  getAttendanceHistory
 };
+

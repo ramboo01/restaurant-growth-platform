@@ -9,6 +9,8 @@ router.post('/', validate(customerSchema), customerController.create);
 router.get('/', customerController.list);
 router.get('/:id', customerController.getById);
 router.put('/:id', validate(customerSchema), customerController.update);
+router.post('/:id/erasure', customerController.erasure);
 router.delete('/:id', customerController.remove);
 
 module.exports = router;
+

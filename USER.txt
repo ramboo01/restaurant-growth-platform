@@ -1,0 +1,97 @@
+Guest (User) Requirements Document
+Storefront/Menu
+UI Requirements
+• Search Bar
+• Categories
+• Food Cards
+• Cart
+• Pickup/Delivery Toggle
+User Actions
+• Browse Menu
+• Search
+• Open Item
+• Change Order Type
+System Requirements
+• Dynamic menu update
+• No full page reload
+• Preserve scroll position
+Item Details
+UI Requirements
+• Image
+• Name
+• Price
+• Modifiers
+• Add to Cart
+User Actions
+• Select Modifiers
+• Add to Cart
+System Requirements
+• Live price update
+• Required modifiers validation
+Cart
+UI Requirements
+• Items
+• Subtotal
+• Upsells
+• Checkout
+User Actions
+• Edit Qty
+• Remove Item
+• Checkout
+System Requirements
+• Validate availability
+• Minimum order validation
+Checkout
+UI Requirements
+• OTP
+• Address
+• Payment
+• Review
+User Actions
+• Login
+• Pay
+• Place Order
+System Requirements
+• Payment authorization
+• Order creation
+Tracking
+UI Requirements
+• Status
+• ETA
+• Map
+User Actions
+• Track Order
+System Requirements
+• Realtime updates
+Order History
+UI Requirements
+• Past Orders
+• Saved Address
+User Actions
+• Reorder
+System Requirements
+• Restore valid cart
+Loyalty
+UI Requirements
+• Points
+• Rewards
+User Actions
+• Redeem
+System Requirements
+• Server validation
+Catering
+UI Requirements
+• Deposit
+• Schedule
+User Actions
+• Book Catering
+System Requirements
+• Installment support
+Privacy
+UI Requirements
+• Notification Settings
+• Delete Request
+User Actions
+• Opt in/out
+System Requirements
+• Privacy compliance

@@ -98,11 +98,60 @@ async function listByRestaurant(request, response, next) {
   }
 }
 
+async function clockIn(request, response, next) {
+  try {
+    const { clockInStaff } = require('./staff.service');
+    const staffId = request.body.staffId || request.user?.id || 1;
+    const restaurantId = getAuthenticatedRestaurantId(request);
+
+    const result = await clockInStaff(staffId, restaurantId);
+    if (result.error) {
+      return sendError(response, { statusCode: 400, message: result.error });
+    }
+
+    return sendSuccess(response, { statusCode: 200, message: 'Clock-in recorded successfully.', data: result });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function clockOut(request, response, next) {
+  try {
+    const { clockOutStaff } = require('./staff.service');
+    const staffId = request.body.staffId || request.user?.id || 1;
+
+    const result = await clockOutStaff(staffId);
+    if (result.error) {
+      return sendError(response, { statusCode: 400, message: result.error });
+    }
+
+    return sendSuccess(response, { statusCode: 200, message: 'Clock-out recorded successfully.', data: result });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function attendanceHistory(request, response, next) {
+  try {
+    const { getAttendanceHistory } = require('./staff.service');
+    const restaurantId = getAuthenticatedRestaurantId(request);
+    const history = await getAttendanceHistory(restaurantId);
+
+    return sendSuccess(response, { statusCode: 200, message: 'Attendance history fetched successfully.', data: { history } });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   create,
   list,
   getById,
   update,
   remove,
-  listByRestaurant
+  listByRestaurant,
+  clockIn,
+  clockOut,
+  attendanceHistory
 };
+

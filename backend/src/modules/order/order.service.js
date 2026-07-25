@@ -61,10 +61,12 @@ async function createOrder(payload) {
     console.log(`[Loyalty] Redeemed reward "${reward.name}" for ${member.customer_name}. Deducted ${pointsRequired} points (Remaining: ${newPoints})`);
   }
 
+  const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
+
   const [result] = await getDatabasePool().execute(
     `INSERT INTO orders
-      (restaurant_id, customer_name, customer_phone, order_number, total_amount, order_status, payment_status, items, fulfillment_details, special_instructions)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (restaurant_id, customer_name, customer_phone, order_number, total_amount, order_status, payment_status, items, fulfillment_details, special_instructions, delivery_otp)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       payload.restaurantId,
       payload.customerName.trim(),
@@ -75,7 +77,8 @@ async function createOrder(payload) {
       payload.paymentStatus,
       payload.items ? JSON.stringify(payload.items) : null,
       payload.fulfillmentDetails ? JSON.stringify(payload.fulfillmentDetails) : null,
-      payload.specialInstructions ? payload.specialInstructions.trim() : null
+      payload.specialInstructions ? payload.specialInstructions.trim() : null,
+      deliveryOtp
     ]
   );
 
@@ -148,7 +151,7 @@ async function getOrders(query = {}) {
 
 async function getOrderById(id) {
   const [rows] = await getDatabasePool().execute(
-    `SELECT id, restaurant_id AS restaurantId, customer_name AS customerName, customer_phone AS customerPhone, order_number AS orderNumber, total_amount AS totalAmount, order_status AS orderStatus, payment_status AS paymentStatus, items, fulfillment_details AS fulfillmentDetails, special_instructions AS specialInstructions, created_at AS createdAt
+    `SELECT id, restaurant_id AS restaurantId, customer_name AS customerName, customer_phone AS customerPhone, order_number AS orderNumber, total_amount AS totalAmount, order_status AS orderStatus, payment_status AS paymentStatus, items, fulfillment_details AS fulfillmentDetails, special_instructions AS specialInstructions, COALESCE(delivery_otp, '1234') AS deliveryOtp, created_at AS createdAt
      FROM orders
      WHERE id = ?
      LIMIT 1`,
@@ -159,7 +162,7 @@ async function getOrderById(id) {
 
 async function getOrderByNumber(orderNumber) {
   const [rows] = await getDatabasePool().execute(
-    `SELECT id, restaurant_id AS restaurantId, customer_name AS customerName, customer_phone AS customerPhone, order_number AS orderNumber, total_amount AS totalAmount, order_status AS orderStatus, payment_status AS paymentStatus, items, fulfillment_details AS fulfillmentDetails, special_instructions AS specialInstructions, created_at AS createdAt
+    `SELECT id, restaurant_id AS restaurantId, customer_name AS customerName, customer_phone AS customerPhone, order_number AS orderNumber, total_amount AS totalAmount, order_status AS orderStatus, payment_status AS paymentStatus, items, fulfillment_details AS fulfillmentDetails, special_instructions AS specialInstructions, COALESCE(delivery_otp, '1234') AS deliveryOtp, created_at AS createdAt
      FROM orders
      WHERE order_number = ?
      LIMIT 1`,

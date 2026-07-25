@@ -98,11 +98,35 @@ async function listByRestaurant(request, response, next) {
   }
 }
 
+async function erasure(request, response, next) {
+  try {
+    const customer = await getCustomerById(request.params.id);
+    if (!customer) {
+      return sendError(response, { statusCode: 404, message: 'Customer not found.' });
+    }
+    if (!belongsToAuthenticatedRestaurant(request, customer)) {
+      return sendError(response, { statusCode: 403, message: 'Forbidden. Restaurant access mismatch.' });
+    }
+
+    const { anonymizeCustomerProfile } = require('./customer.service');
+    const success = await anonymizeCustomerProfile(request.params.id);
+    if (!success) {
+      return sendError(response, { statusCode: 400, message: 'Erasure process failed.' });
+    }
+
+    return sendSuccess(response, { statusCode: 200, message: 'Profile data anonymized successfully per GDPR request.', data: {} });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   create,
   list,
   getById,
   update,
   remove,
-  listByRestaurant
+  listByRestaurant,
+  erasure
 };
+

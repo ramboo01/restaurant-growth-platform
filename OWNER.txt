@@ -1,0 +1,99 @@
+Restaurant Owner Requirements Document
+Screen-wise extracted requirements for the Restaurant Owner role.
+Owner Dashboard
+UI Requirements
+• Revenue Cards
+• Orders
+• Analytics
+• Quick Actions
+Owner Actions
+• View KPIs
+• Open Modules
+System Requirements
+• Realtime dashboard data
+Guest Management
+UI Requirements
+• Guest List
+• Guest Profile
+• Segments
+Owner Actions
+• Search
+• Merge Profiles
+• Export
+System Requirements
+• Unified guest profile
+Menu Management
+UI Requirements
+• Categories
+• Items
+• Modifiers
+• Sync Status
+Owner Actions
+• Add/Edit/Delete Items
+• Publish Menu
+System Requirements
+• Master Menu sync
+86 Board
+UI Requirements
+• Out of Stock Items
+• Availability Toggle
+Owner Actions
+• Mark Available/Unavailable
+System Requirements
+• Instant sync
+Website Content
+UI Requirements
+• Banner
+• Pages
+• Brand Assets
+Owner Actions
+• Edit & Publish
+System Requirements
+• Live update
+Checkout Settings
+UI Requirements
+• Delivery Zones
+• Payment
+• Lead Time
+Owner Actions
+• Configure Rules
+System Requirements
+• Validation before checkout
+Campaign Studio
+UI Requirements
+• Campaigns
+• Templates
+• Reports
+Owner Actions
+• Create Campaign
+• Schedule
+System Requirements
+• Respect opt-in & quiet hours
+Loyalty
+UI Requirements
+• Reward Catalog
+• Points Rules
+Owner Actions
+• Create Rewards
+• Adjust Balance
+System Requirements
+• Cross-channel loyalty
+SEO & Reviews
+UI Requirements
+• Approval Queue
+• Reviews
+Owner Actions
+• Approve AI Content
+• Reply to Reviews
+System Requirements
+• Human approval required
+Reports & Analytics
+UI Requirements
+• Revenue
+• Growth
+• Recovery
+Owner Actions
+• View Reports
+• Export
+System Requirements
+• Daily aggregation

@@ -1,0 +1,77 @@
+Delivery Partner Requirements Document
+Screen-wise extracted requirements for Delivery Partner users.
+Driver Dashboard
+UI Requirements
+• Assigned Orders
+• Current Status
+• Earnings Summary
+• Notifications
+Driver Actions
+• View Assigned Orders
+• Go Online/Offline
+System Requirements
+• Show only assigned orders
+• Realtime order updates
+Order Details
+UI Requirements
+• Customer Name
+• Pickup Address
+• Delivery Address
+• Order Items
+• Contact Button
+Driver Actions
+• Accept Order
+• Reject Order (if allowed)
+• View Route
+System Requirements
+• Display complete delivery information
+Pickup Confirmation
+UI Requirements
+• Restaurant Details
+• Pickup Code
+• Order Status
+Driver Actions
+• Confirm Pickup
+System Requirements
+• Update order status to Picked Up
+• Notify restaurant and customer
+Navigation
+UI Requirements
+• Map
+• Route
+• ETA
+Driver Actions
+• Start Navigation
+• Reach Destination
+System Requirements
+• Realtime location tracking
+Delivery Completion
+UI Requirements
+• Customer OTP/Confirmation
+• Proof of Delivery
+Driver Actions
+• Complete Delivery
+• Upload Proof if required
+System Requirements
+• Mark order as Delivered
+• Trigger customer notification
+Notifications
+UI Requirements
+• New Order Alert
+• Route Changes
+• Support Messages
+Driver Actions
+• Read Alerts
+• Respond if needed
+System Requirements
+• Instant push notifications
+Profile & Earnings
+UI Requirements
+• Driver Profile
+• Completed Deliveries
+• Earnings History
+Driver Actions
+• View Earnings
+• Update Availability
+System Requirements
+• Realtime earnings calculation

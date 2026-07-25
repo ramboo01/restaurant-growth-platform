@@ -201,4 +201,26 @@ router.get('/loyalty/rewards', async (req, res, next) => {
   }
 });
 
+// Get active announcements
+router.get('/announcements', async (req, res, next) => {
+  try {
+    const { getDatabasePool } = require('../../config/database');
+    const [rows] = await getDatabasePool().execute(
+      `SELECT id, title, message, type, target_role AS targetRole, created_at AS createdAt
+       FROM system_announcements
+       WHERE is_active = TRUE
+       ORDER BY created_at DESC
+       LIMIT 5`
+    );
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: 'System announcements fetched successfully',
+      data: { announcements: rows }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 module.exports = router;
+

@@ -1,0 +1,106 @@
+Platform Admin Requirements Document
+Screen-wise extracted requirements for the Platform Administrator role.
+Admin Dashboard
+UI Requirements
+• System KPIs
+• Restaurant Count
+• User Count
+• Revenue Overview
+• Alerts
+Admin Actions
+• View platform metrics
+• Navigate to modules
+System Requirements
+• Live dashboard refresh
+• Role-based visibility
+Restaurant Management
+UI Requirements
+• Restaurant List
+• Approval Queue
+• Status Controls
+Admin Actions
+• Approve/Reject Restaurants
+• Suspend/Activate
+System Requirements
+• Audit all status changes
+User & Role Management
+UI Requirements
+• Users
+• Roles
+• Permissions
+Admin Actions
+• Create/Edit/Delete Users
+• Assign Roles
+System Requirements
+• Permission validation
+Support & Tickets
+UI Requirements
+• Ticket Queue
+• Chat History
+• Priority
+Admin Actions
+• Assign Tickets
+• Resolve Cases
+System Requirements
+• Track SLA and status
+Campaign & Content
+UI Requirements
+• Global Banners
+• Announcements
+• Templates
+Admin Actions
+• Publish/Unpublish
+• Schedule Content
+System Requirements
+• Platform-wide propagation
+Reports & Analytics
+UI Requirements
+• Revenue
+• Orders
+• Growth
+• Exports
+Admin Actions
+• Generate Reports
+• Export Data
+System Requirements
+• Aggregate data automatically
+Audit Logs
+UI Requirements
+• Activity Log
+• Filters
+• Export
+Admin Actions
+• View History
+• Download Logs
+System Requirements
+• Immutable audit trail
+System Settings
+UI Requirements
+• Payment Config
+• Notification Config
+• Integrations
+Admin Actions
+• Update Settings
+• Manage APIs
+System Requirements
+• Validate configuration before saving
+Security
+UI Requirements
+• Login Logs
+• 2FA
+• Blocked Users
+Admin Actions
+• Force Logout
+• Reset Access
+System Requirements
+• Security event monitoring
+Monitoring
+UI Requirements
+• System Health
+• Background Jobs
+• API Status
+Admin Actions
+• View Incidents
+• Restart Services (if permitted)
+System Requirements
+• Real-time health monitoring

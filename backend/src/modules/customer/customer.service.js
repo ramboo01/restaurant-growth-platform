@@ -261,6 +261,34 @@ async function syncCustomerOrder(restaurantId, customerName, phone, email, order
   }
 }
 
+async function anonymizeCustomerProfile(id) {
+  const pool = getDatabasePool();
+  const [custRows] = await pool.execute('SELECT id, phone, email FROM customers WHERE id = ?', [id]);
+  if (custRows.length === 0) return false;
+  const cust = custRows[0];
+
+  const anonymizedName = 'Anonymized User';
+  const anonymizedEmail = `erased_${id}@anonymized.local`;
+  const anonymizedPhone = `000000${id}`;
+  const anonymizedNotes = 'PROFILE_ANONYMIZED_GDPR_REQUEST';
+
+  await pool.execute(
+    `UPDATE customers 
+     SET name = ?, phone = ?, email = ?, notes = ?, segment = 'Anonymized'
+     WHERE id = ?`,
+    [anonymizedName, anonymizedPhone, anonymizedEmail, anonymizedNotes, id]
+  );
+
+  await pool.execute(
+    `UPDATE users
+     SET first_name = 'Anonymized', last_name = 'User', email = ?, phone = NULL
+     WHERE email = ? OR (phone IS NOT NULL AND phone = ?)`,
+    [anonymizedEmail, cust.email, cust.phone]
+  );
+
+  return true;
+}
+
 module.exports = {
   createCustomer,
   getCustomers,
@@ -268,6 +296,8 @@ module.exports = {
   getCustomersByRestaurantId,
   updateCustomer,
   deleteCustomer,
+  anonymizeCustomerProfile,
   syncCustomerOrder,
   recalculateAllCustomerRFMSegments
 };
+
