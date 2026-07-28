@@ -16,19 +16,24 @@ function AdminLayout() {
       label: 'Platform Overview',
       items: [
         { to: '/admin', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
-        { to: '/admin/guests', label: 'Guest Merge Queue', icon: 'bi-people' },
+        { to: '/admin/restaurants', label: 'Tenants & Locations', icon: 'bi-shop' },
+        { to: '/admin/users', label: 'User & Role Matrix', icon: 'bi-people' },
+        { to: '/admin/guests', label: 'Guest Merge Queue', icon: 'bi-person-check' },
       ]
     },
     {
-      label: 'Infrastructure & APIs',
+      label: 'Infrastructure & Security',
       items: [
+        { to: '/admin/reports', label: 'Platform Reports & GMV', icon: 'bi-graph-up-arrow' },
         { to: '/admin/sync', label: 'Channel Sync Health', icon: 'bi-diagram-3' },
-        { to: '/admin/support', label: 'Support & Tickets', icon: 'bi-envelope-paper' },
+        { to: '/admin/monitoring', label: 'System Health Monitor', icon: 'bi-hdd-network' },
+        { to: '/admin/security', label: 'Security & 2FA Governance', icon: 'bi-shield-lock-fill' },
       ]
     },
     {
-      label: 'Operations & Audits',
+      label: 'Operations & Support',
       items: [
+        { to: '/admin/support', label: 'Support & Tickets', icon: 'bi-envelope-paper' },
         { to: '/admin/onboarding', label: 'Onboarding Specialist', icon: 'bi-box-arrow-in-right' },
         { to: '/admin/audit', label: 'Platform Audit Log', icon: 'bi-journal-text' },
       ]

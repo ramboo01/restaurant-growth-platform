@@ -181,6 +181,22 @@ function GuestOrderTrackingPage() {
                 </span>
               </div>
 
+              {/* Delivery OTP Handshake Badge */}
+              <div className="bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 p-3 mb-3 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="bg-primary text-white p-2 rounded-circle">
+                    <i className="bi bi-shield-lock-fill fs-5"></i>
+                  </div>
+                  <div>
+                    <div className="fw-bold text-dark small">Your Delivery Security PIN</div>
+                    <div className="text-muted extra-small">Give this 4-digit PIN to your delivery driver upon handoff.</div>
+                  </div>
+                </div>
+                <div className="badge bg-primary fs-5 px-3 py-2 text-white font-monospace">
+                  {order.deliveryOtp || order.delivery_otp || '1234'}
+                </div>
+              </div>
+
               <div className="progress mb-4" role="progressbar" aria-label="Order progress" aria-valuenow={progressValue} aria-valuemin="0" aria-valuemax="100">
                 <div className="progress-bar" style={{ width: `${progressValue}%` }} />
               </div>

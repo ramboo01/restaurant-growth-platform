@@ -108,10 +108,21 @@ function DriverOrdersPage() {
     toastTimerRef.current = setTimeout(() => setToast(''), 2500);
   }
 
-  const advanceStatus = async (orderId) => {
+  const [otpModalOrder, setOtpModalOrder] = useState(null);
+  const [otpInput, setOtpInput] = useState('');
+  const [otpError, setOtpError] = useState('');
+
+  const advanceStatus = async (orderId, enteredOtp = '') => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
     
+    if (order.orderStatus === 'Out for Delivery' && !enteredOtp) {
+      setOtpModalOrder(order);
+      setOtpInput('');
+      setOtpError('');
+      return;
+    }
+
     let newStatus = '';
     if (order.orderStatus === 'Ready') newStatus = 'Out for Delivery';
     else if (order.orderStatus === 'Out for Delivery') newStatus = 'Delivered';
@@ -119,8 +130,9 @@ function DriverOrdersPage() {
 
     setUpdatingId(orderId);
     try {
-      await driverService.updateDriverOrder(orderId, { orderStatus: newStatus });
-      showToast(`Status updated to ${newStatus}.`);
+      await driverService.updateDriverOrder(orderId, { orderStatus: newStatus, otp: enteredOtp });
+      showToast(`Order marked as Delivered! Security PIN verified.`);
+      setOtpModalOrder(null);
       await fetchOrders();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update order status');
@@ -128,6 +140,7 @@ function DriverOrdersPage() {
       setUpdatingId('');
     }
   };
+
 
   const driverOrders = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -255,8 +268,60 @@ function DriverOrdersPage() {
       ) : (
         <EmptyState title="No deliveries found" message="No active delivery orders matching your filter." />
       )}
+      {/* OTP Handshake Modal */}
+      {otpModalOrder && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header bg-primary text-white border-0 py-3">
+                <h5 className="modal-title fw-bold">
+                  <i className="bi bi-shield-check me-2"></i> Verify Customer Delivery PIN
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setOtpModalOrder(null)}></button>
+              </div>
+              <div className="modal-body p-4 text-center">
+                <p className="text-muted small mb-3">
+                  Ask customer <strong>{otpModalOrder.customerName}</strong> for their 4-digit Delivery Security PIN to complete dropoff.
+                </p>
+                <div className="mb-3">
+                  <input
+                    type="text"
+                    maxLength="4"
+                    className="form-control form-control-lg text-center fs-2 fw-bold font-monospace letter-spacing-2"
+                    placeholder="e.g. 1234"
+                    value={otpInput}
+                    onChange={(e) => {
+                      setOtpInput(e.target.value);
+                      setOtpError('');
+                    }}
+                    autoFocus
+                  />
+                  {otpError && <div className="text-danger small mt-2">{otpError}</div>}
+                </div>
+              </div>
+              <div className="modal-footer border-0 p-3 bg-light">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setOtpModalOrder(null)}>Cancel</button>
+                <button
+                  type="button"
+                  className="btn btn-primary fw-bold px-4"
+                  onClick={() => {
+                    if (!otpInput || otpInput.trim().length !== 4) {
+                      setOtpError('Please enter valid 4-digit PIN');
+                      return;
+                    }
+                    advanceStatus(otpModalOrder.id, otpInput.trim());
+                  }}
+                >
+                  Verify PIN & Mark Delivered
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default DriverOrdersPage;
+

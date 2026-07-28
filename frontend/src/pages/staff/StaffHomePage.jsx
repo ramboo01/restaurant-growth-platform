@@ -63,9 +63,47 @@ function StaffHomePage() {
     Delivered: 'secondary'
   };
 
+  const [clockState, setClockState] = useState({
+    isClockedIn: false,
+    clockInTime: null,
+    shiftSeconds: 0,
+  });
+
+  useEffect(() => {
+    let timer;
+    if (clockState.isClockedIn) {
+      timer = setInterval(() => {
+        setClockState(prev => ({ ...prev, shiftSeconds: prev.shiftSeconds + 1 }));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [clockState.isClockedIn]);
+
+  const handleClockIn = async () => {
+    setClockState({
+      isClockedIn: true,
+      clockInTime: new Date(),
+      shiftSeconds: 0
+    });
+  };
+
+  const handleClockOut = async () => {
+    setClockState(prev => ({
+      ...prev,
+      isClockedIn: false
+    }));
+  };
+
+  const formatShiftTime = (secs) => {
+    const hrs = Math.floor(secs / 3600);
+    const mins = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="container-fluid py-4">
-      {/* Header */}
+      {/* Header & Time-Clock Banner */}
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div>
           <h2 className="fw-bold mb-1">
@@ -73,13 +111,27 @@ function StaffHomePage() {
           </h2>
           <p className="text-muted mb-0">Live shift overview — orders, kitchen status, and real-time operations.</p>
         </div>
-        <div className="text-end">
-          <div className="fs-4 fw-bold text-dark">
-            {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+
+        {/* Time-Clock Attendance Card */}
+        <div className="bg-white p-3 rounded-4 shadow-sm border d-flex align-items-center gap-3">
+          <div>
+            <div className="text-muted extra-small uppercase fw-bold">SHIFT ATTENDANCE</div>
+            <div className="fw-bold text-dark fs-5 font-monospace">
+              {clockState.isClockedIn ? formatShiftTime(clockState.shiftSeconds) : '00:00:00'}
+            </div>
+            <div className="extra-small text-muted">
+              {clockState.isClockedIn ? `Clocked in at ${clockState.clockInTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Shift Not Started'}
+            </div>
           </div>
-          <div className="text-muted small">
-            {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </div>
+          {clockState.isClockedIn ? (
+            <button className="btn btn-danger btn-sm fw-bold px-3 py-2" onClick={handleClockOut}>
+              <i className="bi bi-box-arrow-right me-1"></i> Clock Out
+            </button>
+          ) : (
+            <button className="btn btn-success btn-sm fw-bold px-3 py-2" onClick={handleClockIn}>
+              <i className="bi bi-alarm-fill me-1"></i> Start Shift (Clock In)
+            </button>
+          )}
         </div>
       </div>
 

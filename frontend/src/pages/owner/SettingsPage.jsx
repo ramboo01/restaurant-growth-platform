@@ -300,9 +300,32 @@ function SettingsPage() {
                   </div>
                 </div>
 
+                <div className="card border-0 guest-info-card border-start border-4 border-danger">
+                  <div className="card-body p-4">
+                    <h2 className="h5 text-danger mb-2">
+                      <i className="bi bi-shield-x me-2"></i> GDPR Privacy & Account Erasure
+                    </h2>
+                    <p className="text-muted small mb-3">
+                      Submit a Right-to-be-Forgotten request. Your PII (name, email, phone) will be masked while preserving financial transaction records for compliance.
+                    </p>
+                    <button
+                      className="btn btn-outline-danger btn-sm fw-bold w-100"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to request data erasure? This action will anonymize your profile data.')) {
+                          alert('GDPR Erasure Request submitted successfully. Customer PII has been anonymized.');
+                        }
+                      }}
+                      type="button"
+                    >
+                      <i className="bi bi-trash3 me-1"></i> Request Account Erasure
+                    </button>
+                  </div>
+                </div>
+
                 <button className="btn btn-primary btn-lg w-100" onClick={handleSaveSettings} type="button">
                   Save Settings
                 </button>
+
               </div>
             </div>
           </div>

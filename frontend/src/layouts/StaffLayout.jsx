@@ -15,6 +15,9 @@ function StaffLayout() {
     { to: '/staff', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
     { to: '/staff/orders', label: 'Order Queue', icon: 'bi-receipt' },
     { to: '/staff/kitchen', label: 'Kitchen Display', icon: 'bi-fire' },
+    { to: '/staff/86-board', label: "86'd Items", icon: 'bi-slash-circle' },
+    { to: '/staff/guest-lookup', label: 'Guest Lookup', icon: 'bi-person-search' },
+    { to: '/staff/inventory', label: 'Stock Counts', icon: 'bi-boxes' },
   ];
 
   return (

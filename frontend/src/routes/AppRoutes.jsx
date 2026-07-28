@@ -12,8 +12,16 @@ import AdminChannelSyncPage from '../pages/admin/AdminChannelSyncPage.jsx';
 import AdminOnboardingPage from '../pages/admin/AdminOnboardingPage.jsx';
 import AdminSupportTicketsPage from '../pages/admin/AdminSupportTicketsPage.jsx';
 import AdminAuditLogPage from '../pages/admin/AdminAuditLogPage.jsx';
+import AdminRestaurantsPage from '../pages/admin/AdminRestaurantsPage.jsx';
+import AdminUsersPage from '../pages/admin/AdminUsersPage.jsx';
+import AdminReportsPage from '../pages/admin/AdminReportsPage.jsx';
+import AdminSecurityPage from '../pages/admin/AdminSecurityPage.jsx';
+import AdminMonitoringPage from '../pages/admin/AdminMonitoringPage.jsx';
+
 import DriverHomePage from '../pages/driver/DriverHomePage.jsx';
 import DriverOrdersPage from '../pages/driver/DriverOrdersPage.jsx';
+import DriverProfilePage from '../pages/driver/DriverProfilePage.jsx';
+
 import GuestCheckoutPage from '../pages/guest/GuestCheckoutPage.jsx';
 import GuestHomePage from '../pages/guest/GuestHomePage.jsx';
 import GuestOrderSuccessPage from '../pages/guest/GuestOrderSuccessPage.jsx';
@@ -40,6 +48,10 @@ import SettingsPage from '../pages/owner/SettingsPage.jsx';
 import StaffHomePage from '../pages/staff/StaffHomePage.jsx';
 import KitchenDisplayPage from '../pages/staff/KitchenDisplayPage.jsx';
 import StaffOrdersPage from '../pages/staff/StaffOrdersPage.jsx';
+import Staff86BoardPage from '../pages/staff/Staff86BoardPage.jsx';
+import StaffGuestLookupPage from '../pages/staff/StaffGuestLookupPage.jsx';
+import StaffInventoryPage from '../pages/staff/StaffInventoryPage.jsx';
+
 import NotFoundPage from '../pages/system/NotFoundPage.jsx';
 import ProtectedRoute from '../components/auth/ProtectedRoute.jsx';
 import ReviewsPage from '../pages/owner/ReviewsPage.jsx';
@@ -100,18 +112,27 @@ function AppRoutes() {
             <Route index element={<StaffHomePage />} />
             <Route path="orders" element={<StaffOrdersPage />} />
             <Route path="kitchen" element={<KitchenDisplayPage />} />
+            <Route path="86-board" element={<Staff86BoardPage />} />
+            <Route path="guest-lookup" element={<StaffGuestLookupPage />} />
+            <Route path="inventory" element={<StaffInventoryPage />} />
             <Route path="*" element={<StaffHomePage />} />
           </Route>
 
           <Route path="driver" element={<DriverLayout />}>
             <Route index element={<DriverHomePage />} />
             <Route path="orders" element={<DriverOrdersPage />} />
+            <Route path="profile" element={<DriverProfilePage />} />
             <Route path="*" element={<DriverHomePage />} />
           </Route>
 
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="restaurants" element={<AdminRestaurantsPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="reports" element={<AdminReportsPage />} />
+            <Route path="security" element={<AdminSecurityPage />} />
+            <Route path="monitoring" element={<AdminMonitoringPage />} />
             <Route path="guests" element={<AdminHomePage />} />
             <Route path="sync" element={<AdminChannelSyncPage />} />
             <Route path="onboarding" element={<AdminOnboardingPage />} />
