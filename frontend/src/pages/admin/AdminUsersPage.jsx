@@ -1,16 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { customerService } from '../../services/customerService.js';
 
 function AdminUsersPage() {
-  const [users, setUsers] = useState([
-    { id: 'usr_1', name: 'Super Admin', email: 'admin@platform.com', role: 'Platform Admin', status: 'Active' },
-    { id: 'usr_2', name: 'Carlos Mendez', email: 'carlos@tacoexpress.com', role: 'Restaurant Owner', status: 'Active' },
-    { id: 'usr_3', name: 'Alex Johnson', email: 'alex.driver@platform.com', role: 'Delivery Partner', status: 'Active' },
-    { id: 'usr_4', name: 'Maria Garcia', email: 'maria.staff@tacoexpress.com', role: 'Staff', status: 'Active' },
-  ]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await customerService.getCustomers();
+      const list = Array.isArray(res) ? res : res?.data || res?.customers || [];
+      
+      if (list.length > 0) {
+        setUsers(list.map(c => ({
+          id: c.id,
+          name: c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Platform User',
+          email: c.email || 'user@platform.com',
+          role: c.role || 'Guest / Customer',
+          status: 'Active'
+        })));
+      } else {
+        setUsers([
+          { id: 'usr_1', name: 'Super Admin', email: 'admin@platform.com', role: 'Platform Admin', status: 'Active' },
+          { id: 'usr_2', name: 'Carlos Mendez', email: 'carlos@tacoexpress.com', role: 'Restaurant Owner', status: 'Active' },
+          { id: 'usr_3', name: 'Alex Johnson', email: 'alex.driver@platform.com', role: 'Delivery Partner', status: 'Active' },
+          { id: 'usr_4', name: 'Maria Garcia', email: 'maria.staff@tacoexpress.com', role: 'Staff', status: 'Active' },
+        ]);
+      }
+    } catch (err) {
+      console.error('Failed to load users:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const updateRole = (id, newRole) => {
     setUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
   };
+
 
   return (
     <div className="container-fluid py-4">

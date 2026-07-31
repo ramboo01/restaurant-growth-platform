@@ -26,9 +26,9 @@ export const loyaltyService = {
     return response.data.data;
   },
 
-  checkGuestPoints: async (phone, restaurantId) => {
+  checkGuestPoints: async (phone, restaurantId, customerName) => {
     const response = await api.get('/api/public/loyalty/check', {
-      params: { phone, restaurantId }
+      params: { phone, restaurantId, customerName: customerName || undefined }
     });
     return response.data?.data;
   },
@@ -38,5 +38,14 @@ export const loyaltyService = {
       params: { restaurantId }
     });
     return response.data?.data?.rewards || [];
+  },
+
+  redeemPoints: async (phone, restaurantId, points) => {
+    const response = await api.post('/api/public/loyalty/redeem', {
+      phone,
+      restaurantId,
+      points
+    });
+    return response.data?.data;
   }
 };

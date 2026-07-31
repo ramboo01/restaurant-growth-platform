@@ -101,12 +101,19 @@ function StaffOrdersPage() {
   }
 
   async function handleAdvanceStatus(order) {
-    const nextStatusMap = {
-      Pending: 'Preparing',
-      Preparing: 'Ready',
-      Ready: 'Completed'
-    };
-    const nextStatus = nextStatusMap[order.orderStatus];
+    const isDelivery = (order.fulfillmentDetails?.type || 'Delivery').toLowerCase() === 'delivery';
+
+    let nextStatus = '';
+    if (order.orderStatus === 'Pending') nextStatus = 'Preparing';
+    else if (order.orderStatus === 'Preparing') nextStatus = 'Ready';
+    else if (order.orderStatus === 'Ready') {
+      if (isDelivery) {
+        showToast(`Delivery order ${order.orderNumber} is ready. Awaiting driver dispatch.`);
+        return;
+      }
+      nextStatus = 'Completed';
+    }
+
     if (!nextStatus) return;
 
     setUpdatingId(order.id);
@@ -141,10 +148,16 @@ function StaffOrdersPage() {
     });
   }, [orders, searchTerm, statusFilter]);
 
-  function getActionLabel(status) {
+  function getActionLabel(order) {
+    const status = order.orderStatus;
+    const isDelivery = (order.fulfillmentDetails?.type || 'Delivery').toLowerCase() === 'delivery';
+
     if (status === 'Pending') return 'Accept';
     if (status === 'Preparing') return 'Mark Ready';
-    if (status === 'Ready') return 'Complete';
+    if (status === 'Ready') {
+      return isDelivery ? 'Awaiting Driver Pickup' : 'Complete';
+    }
+    if (status === 'Out for Delivery') return 'Out for Delivery';
     return 'Completed';
   }
 
@@ -225,49 +238,56 @@ function StaffOrdersPage() {
         <LoadingState message="Loading staff order queue..." />
       ) : filteredOrders.length ? (
         <div className="row g-3">
-          {filteredOrders.map((order) => (
-            <div className="col-12 col-md-6 col-xxl-4" key={order.id}>
-              <article className="card border-0 guest-cart-item h-100">
-                <div className="card-body d-flex flex-column">
-                  <div className="d-flex justify-content-between gap-3 mb-3">
-                    <div>
-                      <p className="text-secondary small mb-1">Order Number</p>
-                      <h2 className="h6 mb-0">{order.orderNumber}</h2>
-                    </div>
-                    <span className="badge text-bg-light border">{order.orderStatus}</span>
-                  </div>
+          {filteredOrders.map((order) => {
+            const isDelivery = (order.fulfillmentDetails?.type || 'Delivery').toLowerCase() === 'delivery';
+            const isDisabled = ['Completed', 'Delivered', 'Cancelled', 'Out for Delivery'].includes(order.orderStatus) || 
+                              (order.orderStatus === 'Ready' && isDelivery) || 
+                              updatingId === order.id;
 
-                  <div className="vstack gap-2 mb-4">
-                    <div className="d-flex justify-content-between gap-3">
-                      <span className="text-secondary">Customer</span>
-                      <span>{order.customerName}</span>
+            return (
+              <div className="col-12 col-md-6 col-xxl-4" key={order.id}>
+                <article className="card border-0 guest-cart-item h-100">
+                  <div className="card-body d-flex flex-column">
+                    <div className="d-flex justify-content-between gap-3 mb-3">
+                      <div>
+                        <p className="text-secondary small mb-1">Order Number</p>
+                        <h2 className="h6 mb-0">{order.orderNumber}</h2>
+                      </div>
+                      <span className="badge text-bg-light border">{order.orderStatus}</span>
                     </div>
-                    <div className="d-flex justify-content-between gap-3">
-                      <span className="text-secondary">Type</span>
-                      <span>{order.fulfillmentDetails?.type || 'Pickup'}</span>
-                    </div>
-                    <div className="d-flex justify-content-between gap-3">
-                      <span className="text-secondary">Time</span>
-                      <span>{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : '-'}</span>
-                    </div>
-                    <div className="d-flex justify-content-between gap-3">
-                      <span className="text-secondary">Total</span>
-                      <span>{formatCurrency(order.totalAmount)}</span>
-                    </div>
-                  </div>
 
-                  <button
-                    className="btn btn-primary mt-auto"
-                    disabled={['Completed', 'Cancelled'].includes(order.orderStatus) || updatingId === order.id}
-                    onClick={() => handleAdvanceStatus(order)}
-                    type="button"
-                  >
-                    {updatingId === order.id ? 'Updating...' : getActionLabel(order.orderStatus)}
-                  </button>
-                </div>
-              </article>
-            </div>
-          ))}
+                    <div className="vstack gap-2 mb-4">
+                      <div className="d-flex justify-content-between gap-3">
+                        <span className="text-secondary">Customer</span>
+                        <span>{order.customerName}</span>
+                      </div>
+                      <div className="d-flex justify-content-between gap-3">
+                        <span className="text-secondary">Type</span>
+                        <span>{order.fulfillmentDetails?.type || 'Pickup'}</span>
+                      </div>
+                      <div className="d-flex justify-content-between gap-3">
+                        <span className="text-secondary">Time</span>
+                        <span>{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : '-'}</span>
+                      </div>
+                      <div className="d-flex justify-content-between gap-3">
+                        <span className="text-secondary">Total</span>
+                        <span>{formatCurrency(order.totalAmount)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      className={`btn mt-auto ${order.orderStatus === 'Ready' && isDelivery ? 'btn-outline-secondary' : 'btn-primary'}`}
+                      disabled={isDisabled}
+                      onClick={() => handleAdvanceStatus(order)}
+                      type="button"
+                    >
+                      {updatingId === order.id ? 'Updating...' : getActionLabel(order)}
+                    </button>
+                  </div>
+                </article>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <EmptyState title="No orders found." message="Try adjusting your search or status filter." />

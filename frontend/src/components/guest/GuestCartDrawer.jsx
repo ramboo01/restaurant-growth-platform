@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 
 function formatCurrency(value) {
   return `$${value.toFixed(2)}`;
@@ -14,7 +13,8 @@ function GuestCartDrawer({
   onIncreaseQuantity,
   onRemoveItem,
   subtotal,
-  restaurantId
+  restaurantId,
+  onCheckout
 }) {
   const estimatedTotal = subtotal + deliveryFee;
   const checkoutState = {
@@ -117,9 +117,13 @@ function GuestCartDrawer({
                     <span>Estimated Total</span>
                     <span>{formatCurrency(estimatedTotal)}</span>
                   </div>
-                  <Link className="btn btn-primary w-100 mt-4" state={checkoutState} to="/checkout" onClick={onClose}>
+                  <button
+                    type="button"
+                    className="btn btn-primary w-100 mt-4 fw-bold"
+                    onClick={onCheckout}
+                  >
                     Continue to Checkout
-                  </Link>
+                  </button>
                 </div>
               </div>
             </>

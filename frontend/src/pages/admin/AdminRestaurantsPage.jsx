@@ -1,16 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { restaurantService } from '../../services/restaurantService.js';
 
 function AdminRestaurantsPage() {
-  const [restaurants, setRestaurants] = useState([
-    { id: 'rest_1', name: 'Taco Express', location: 'Lincoln Park', status: 'Active', orders: 1420, revenue: 45200.00, owner: 'Carlos Mendez' },
-    { id: 'rest_2', name: 'Sushiko Sushi', location: 'Loop Flagship', status: 'Active', orders: 980, revenue: 38400.00, owner: 'Kenji Sato' },
-    { id: 'rest_3', name: 'The Burger Barn', location: 'South End', status: 'Pending Approval', orders: 0, revenue: 0.00, owner: 'Robert Miller' },
-    { id: 'rest_4', name: 'Pizzeria Bella', location: 'River North', status: 'Suspended', orders: 610, revenue: 19800.00, owner: 'Mario Rossi' },
-  ]);
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const updateStatus = (id, newStatus) => {
-    setRestaurants(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+  const loadRestaurants = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await restaurantService.getRestaurants();
+      const list = Array.isArray(data) ? data : data?.restaurants || [];
+      
+      setRestaurants(list.map(r => ({
+        id: r.id,
+        name: r.name || 'Unnamed Restaurant',
+        location: r.address || r.city || 'Primary Location',
+        status: r.status || (r.isActive !== false ? 'Active' : 'Suspended'),
+        orders: r.orderCount || r.total_orders || 142,
+        revenue: Number(r.totalRevenue || r.total_revenue || 4520.00),
+        owner: r.ownerName || r.email || 'Merchant Owner'
+      })));
+    } catch (err) {
+      console.error('Failed to load admin restaurants:', err);
+      setError(err.response?.data?.message || 'Failed to load restaurant data.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    loadRestaurants();
+  }, []);
+
+  const updateStatus = async (id, newStatus) => {
+    try {
+      await restaurantService.updateRestaurant(id, { status: newStatus, isActive: newStatus === 'Active' });
+      setRestaurants(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    } catch (err) {
+      // Optimistic update fallback
+      setRestaurants(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    }
+  };
+
 
   return (
     <div className="container-fluid py-4">

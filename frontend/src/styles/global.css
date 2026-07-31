@@ -8,11 +8,19 @@ html,
 body,
 #root {
   min-height: 100%;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
   margin: 0;
   background: #f7f8fa;
+}
+
+.promo-badge {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 a {

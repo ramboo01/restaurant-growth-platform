@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import EmptyState from '../../components/feedback/EmptyState.jsx';
-import GuestCartDrawer from '../../components/guest/GuestCartDrawer.jsx';
 import GuestItemDetailModal from '../../components/guest/GuestItemDetailModal.jsx';
 import GuestMenuItemCard from '../../components/guest/GuestMenuItemCard.jsx';
 import { guestStorefront } from '../../data/guestStorefrontData.js';
 import { storefrontService } from '../../services/storefrontService.js';
 import { io } from 'socket.io-client';
+import useSeoInjector from '../../hooks/useSeoInjector.js';
+
+import api from '../../services/api';
 
 function formatCurrencyStringToNumber(value) {
   if (typeof value === 'number') return value;
@@ -14,8 +16,15 @@ function formatCurrencyStringToNumber(value) {
 }
 
 function GuestHomePage() {
-  const { setGuestHeaderConfig } = useOutletContext();
-  
+  useSeoInjector();
+  const {
+    cartItems, cartQuantity, subtotal, addCartItem: contextAddCartItem,
+    increaseCartItemQuantity, decreaseCartItemQuantity, removeCartItem,
+    openCart, setFulfillment: setLayoutFulfillment, fulfillment: layoutFulfillment,
+    setDeliveryFee, restaurantId: layoutRestaurantId, setRestaurantId: setLayoutRestaurantId,
+    setGuestHeaderConfig
+  } = useOutletContext();
+
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
@@ -27,8 +36,50 @@ function GuestHomePage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
-  const [cartItems, setCartItems] = useState([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [addedToastItem, setAddedToastItem] = useState(null);
+  const [siteAppConfig, setSiteAppConfig] = useState(null);
+
+  useEffect(() => {
+    async function fetchPublicSiteSettings() {
+      try {
+        const res = await api.get('/api/site-settings/public');
+        if (res.data?.data) {
+          const d = res.data.data;
+          setSiteAppConfig({
+            heroTitle: d.hero_title,
+            heroSubtitle: d.hero_subtitle,
+            promoText: d.banner_enabled ? d.banner_text : '',
+            primaryColor: d.primary_color,
+            secondaryColor: d.secondary_color,
+            announcementTicker: d.announcement_ticker,
+            storeHours: d.store_hours
+          });
+        }
+      } catch (e) {
+        console.error('Failed to load public site settings:', e);
+      }
+    }
+    fetchPublicSiteSettings();
+
+    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+    socket.on('siteSettingsUpdated', (d) => {
+      if (d) {
+        setSiteAppConfig({
+          heroTitle: d.hero_title,
+          heroSubtitle: d.hero_subtitle,
+          promoText: d.banner_enabled ? d.banner_text : '',
+          primaryColor: d.primary_color,
+          secondaryColor: d.secondary_color,
+          announcementTicker: d.announcement_ticker,
+          storeHours: d.store_hours
+        });
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   // Load public restaurant catalog data on mount
   useEffect(() => {
@@ -42,6 +93,7 @@ function GuestHomePage() {
         if (list.length > 0) {
           const defaultRestaurant = list[0];
           setSelectedRestaurant(defaultRestaurant);
+          localStorage.setItem('selectedRestaurantId', defaultRestaurant.id);
           
           const [items, cats] = await Promise.all([
             storefrontService.getMenu(defaultRestaurant.id),
@@ -56,6 +108,7 @@ function GuestHomePage() {
             categoryId: item.category || 'all',
             category: item.category || 'Menu',
             basePrice: Number(item.price || 0),
+            imageUrl: item.imageUrl || item.image_url || '',
             imagePlaceholder: (item.name || 'MI').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
             isAvailable: item.isAvailable !== 0,
             is86d: item.isAvailable === 0,
@@ -78,7 +131,7 @@ function GuestHomePage() {
     }
     loadStorefrontData();
   }, []);
-
+ 
   // Handle switching restaurants
   async function handleRestaurantChange(event) {
     const restaurantId = event.target.value;
@@ -89,6 +142,7 @@ function GuestHomePage() {
       setIsLoading(true);
       setError(null);
       setSelectedRestaurant(restaurant);
+      localStorage.setItem('selectedRestaurantId', restaurant.id);
       
       const [items, cats] = await Promise.all([
         storefrontService.getMenu(restaurant.id),
@@ -227,29 +281,29 @@ function GuestHomePage() {
         ]
       : [guestStorefront.fulfillment.pickup.pickupTime, `Pickup from ${selectedRestaurant?.name || guestStorefront.location.name}`];
 
-  const cartQuantity = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  }, [cartItems]);
-
-  const subtotal = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.total, 0);
-  }, [cartItems]);
 
   const deliveryFee =
     fulfillment === 'Delivery' ? formatCurrencyStringToNumber(guestStorefront.fulfillment.delivery.deliveryFee) : 0;
 
+  // No need to sync header config (cart lives in GuestLayout now)
+  // Sync fulfillment and restaurantId to layout
   useEffect(() => {
-    setGuestHeaderConfig({
-      cartQuantity,
-      onCartClick: () => setIsCartOpen(true)
-    });
-  }, [cartQuantity, setGuestHeaderConfig]);
+    if (selectedRestaurant) {
+      setLayoutRestaurantId(selectedRestaurant.id);
+      localStorage.setItem('selectedRestaurantId', selectedRestaurant.id);
+    }
+  }, [selectedRestaurant, setLayoutRestaurantId]);
 
   useEffect(() => {
-    if (!cartItems.length) {
-      setIsCartOpen(false);
-    }
-  }, [cartItems]);
+    setLayoutFulfillment(fulfillment);
+  }, [fulfillment, setLayoutFulfillment]);
+
+  useEffect(() => {
+    const fee = fulfillment === 'Delivery'
+      ? formatCurrencyStringToNumber(guestStorefront.fulfillment.delivery.deliveryFee)
+      : 0;
+    setDeliveryFee(fee);
+  }, [fulfillment, setDeliveryFee]);
 
   function clearFilters() {
     setSelectedCategory('all');
@@ -264,52 +318,71 @@ function GuestHomePage() {
   }
 
   function addCartItem(configuredItem) {
-    const cartEntry = {
-      ...configuredItem,
-      cartEntryId: crypto.randomUUID()
-    };
-    setCartItems((current) => [...current, cartEntry]);
-    setIsCartOpen(true);
+    contextAddCartItem(configuredItem);
+    // Show quick toast — do NOT auto-open drawer so user can keep shopping
+    setAddedToastItem(configuredItem.itemName || 'Item');
+    setSelectedItem(null);
+    setTimeout(() => setAddedToastItem(null), 2500);
   }
 
-  function updateCartItemQuantity(cartEntryId, nextQuantity) {
-    setCartItems((current) =>
-      current.map((item) =>
-        item.cartEntryId === cartEntryId
-          ? {
-              ...item,
-              quantity: nextQuantity,
-              total: item.unitPrice * nextQuantity
-            }
-          : item
-      )
-    );
-  }
 
-  function decreaseCartItemQuantity(cartEntryId) {
-    const cartItem = cartItems.find((item) => item.cartEntryId === cartEntryId);
-    if (!cartItem || cartItem.quantity === 1) {
-      return;
-    }
-    updateCartItemQuantity(cartEntryId, cartItem.quantity - 1);
-  }
-
-  function increaseCartItemQuantity(cartEntryId) {
-    const cartItem = cartItems.find((item) => item.cartEntryId === cartEntryId);
-    if (!cartItem) {
-      return;
-    }
-    updateCartItemQuantity(cartEntryId, cartItem.quantity + 1);
-  }
-
-  function removeCartItem(cartEntryId) {
-    setCartItems((current) => current.filter((item) => item.cartEntryId !== cartEntryId));
-  }
+  const activeTheme = siteAppConfig?.theme || 'dark';
 
   return (
     <div className="guest-storefront">
+      {siteAppConfig?.announcementTicker && (
+        <div className="bg-dark text-white text-center py-2 px-3 small fw-bold shadow-sm">
+          {siteAppConfig.announcementTicker}
+        </div>
+      )}
+      {/* Dynamic Hero Banner powered by Site & App Editor */}
+      <section
+        className={`guest-hero-banner py-4 py-md-5 px-3 text-center transition-all overflow-hidden ${
+          activeTheme === 'dark'
+            ? 'bg-dark text-white'
+            : activeTheme === 'light'
+            ? 'bg-white text-dark border-bottom'
+            : 'bg-dark text-white'
+        }`}
+        style={{
+          background: activeTheme === 'glass' ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' : undefined,
+          borderBottom: '1px solid rgba(255,255,255,0.1)'
+        }}
+      >
+        <div className="container py-2 py-md-3" style={{ maxWidth: '800px' }}>
+          {siteAppConfig?.promoText ? (
+            <div
+              className="badge promo-badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50 py-2 px-3 rounded-pill mb-3 fw-semibold d-inline-block mw-100"
+              style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.4' }}
+            >
+              <i className="bi bi-megaphone me-2" />
+              {siteAppConfig.promoText}
+            </div>
+          ) : null}
+
+          <h1 className="fs-2 fs-md-1 fw-bold mb-3 text-break" style={{ lineHeight: '1.2' }}>
+            {siteAppConfig?.heroTitle || selectedRestaurant?.name || guestStorefront.restaurant.name}
+          </h1>
+
+          <p className="lead opacity-75 mb-4 mx-auto text-wrap" style={{ maxWidth: '650px', fontSize: '1rem' }}>
+            {siteAppConfig?.heroSubtitle || selectedRestaurant?.description || guestStorefront.restaurant.description}
+          </p>
+
+          <div className="d-flex justify-content-center gap-3 flex-wrap">
+            <a
+              className="btn btn-primary btn-lg px-4 py-3 fw-bold rounded-pill shadow-sm text-wrap mw-100"
+              href="#guest-menu-heading"
+              style={{ maxWidth: '100%', whiteSpace: 'normal' }}
+            >
+              <i className="bi bi-bag-check me-2" />
+              {siteAppConfig?.ctaText || 'Order Direct & Save'}
+            </a>
+          </div>
+        </div>
+      </section>
+
       <section className="guest-restaurant-panel">
-        <div className="container py-4 py-lg-5">
+        <div className="container py-4">
           {isLoading ? (
             <div className="text-center py-5">
               <div className="spinner-border text-primary" role="status">
@@ -338,9 +411,8 @@ function GuestHomePage() {
                     ))}
                   </select>
                 </div>
-                <h1 className="display-6 fw-bold mb-2">{selectedRestaurant?.name || guestStorefront.restaurant.name}</h1>
-                <p className="h6 text-secondary mb-3">{selectedRestaurant?.address || guestStorefront.location.name}</p>
-                <p className="lead mb-3">{selectedRestaurant?.cuisine ? `${selectedRestaurant.cuisine} Cuisine` : guestStorefront.restaurant.description}</p>
+                <h2 className="h4 fw-bold mb-1">{selectedRestaurant?.name || guestStorefront.restaurant.name}</h2>
+                <p className="text-secondary small mb-2">{selectedRestaurant?.address || guestStorefront.location.name}</p>
                 <div className="d-flex flex-wrap gap-2">
                   <span className="badge text-bg-light border">
                     <i className="bi bi-star-fill text-warning me-1" aria-hidden="true" />
@@ -354,13 +426,13 @@ function GuestHomePage() {
                 </div>
               </div>
               <div className="col-12 col-lg-5">
-                <div className="card border-0 guest-info-card">
+                <div className="card border-0 guest-info-card shadow-sm">
                   <div className="card-body">
-                    <h2 className="h5 mb-3">Fulfillment</h2>
+                    <h2 className="h6 mb-3 fw-bold">Fulfillment</h2>
                     <div className="btn-group w-100 mb-3" role="group" aria-label="Fulfillment option">
                       {guestStorefront.fulfillmentOptions.map((option) => (
                         <button
-                          className={`btn ${fulfillment === option ? 'btn-primary' : 'btn-outline-primary'}`}
+                          className={`btn btn-sm ${fulfillment === option ? 'btn-primary' : 'btn-outline-primary'}`}
                           key={option}
                           onClick={() => setFulfillment(option)}
                           type="button"
@@ -390,8 +462,12 @@ function GuestHomePage() {
           <section className="guest-promo-banner mb-4">
             <i className="bi bi-ticket-perforated" aria-hidden="true" />
             <div>
-              <h2 className="h6 mb-1">{guestStorefront.promotion.title}</h2>
-              <p className="mb-0 small">{guestStorefront.promotion.description}</p>
+              <h2 className="h6 mb-1">
+                {siteAppConfig?.promoText || guestStorefront.promotion.title}
+              </h2>
+              <p className="mb-0 small">
+                {siteAppConfig?.heroSubtitle || guestStorefront.promotion.description}
+              </p>
             </div>
           </section>
 
@@ -470,18 +546,32 @@ function GuestHomePage() {
         onAddToCart={addCartItem}
         onClose={() => setSelectedItem(null)}
       />
-      <GuestCartDrawer
-        cartItems={cartItems}
-        deliveryFee={deliveryFee}
-        fulfillment={fulfillment}
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        onDecreaseQuantity={decreaseCartItemQuantity}
-        onIncreaseQuantity={increaseCartItemQuantity}
-        onRemoveItem={removeCartItem}
-        subtotal={subtotal}
-        restaurantId={selectedRestaurant?.id}
-      />
+
+      {/* ✅ Added to Cart Toast — pops briefly so user keeps browsing */}
+      {addedToastItem && (
+        <div
+          style={{
+            position: 'fixed', top: '80px', left: '50%',
+            transform: 'translateX(-50%)', zIndex: 9999,
+            minWidth: '300px', maxWidth: '92vw'
+          }}
+        >
+          <div className="alert alert-success shadow-lg d-flex align-items-center gap-3 py-3 px-4 rounded-4 border-0 mb-0">
+            <i className="bi bi-bag-check-fill fs-4 text-success" />
+            <div className="flex-grow-1">
+              <div className="fw-bold text-dark" style={{ fontSize: '0.9rem' }}>Added to cart!</div>
+              <div className="text-muted small">{addedToastItem}</div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-success fw-bold rounded-pill px-3"
+              onClick={() => { setAddedToastItem(null); openCart(); }}
+            >
+              View Cart ({cartQuantity})
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -38,24 +38,37 @@ function Owner86BoardPage() {
   }, []);
 
   const loadData = async () => {
-    if (!user?.restaurantId) {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const [fetchedItems, fetchedCategories] = await Promise.all([
-        fetchMenuItems(),
-        storefrontService.getCategories(user.restaurantId)
-      ]);
-      setItems(fetchedItems.map(item => ({
-        ...item,
-        is86d: item.isAvailable === 0 || item.isAvailable === false,
-        basePrice: Number(item.price) || 0,
-        categoryId: item.category, // Assuming category name or ID is returned here
-        channels: {} // Mock channels for now
-      })));
-      setCategories(fetchedCategories);
+      const fetchedItems = await fetchMenuItems();
+      const restaurantId = user?.restaurantId || 1;
+      let fetchedCategories = [];
+      try {
+        fetchedCategories = await storefrontService.getCategories(restaurantId);
+      } catch (catErr) {
+        console.warn('Could not fetch categories from storefront service:', catErr.message);
+      }
+
+      const itemsList = (Array.isArray(fetchedItems) ? fetchedItems : []).map((item) => {
+        const isAvail = item.isAvailable !== false && item.isAvailable !== 0 && item.isAvailable !== '0';
+        return {
+          ...item,
+          isAvailable: isAvail,
+          is86d: !isAvail,
+          basePrice: Number(item.price ?? item.basePrice ?? 0),
+          categoryId: item.category ?? 'Unassigned',
+          channels: item.channels ?? {}
+        };
+      });
+
+      setItems(itemsList);
+
+      if (Array.isArray(fetchedCategories) && fetchedCategories.length > 0) {
+        setCategories(fetchedCategories);
+      } else {
+        const uniqueCats = Array.from(new Set(itemsList.map((i) => i.categoryId).filter(Boolean)));
+        setCategories(uniqueCats.map((cat) => ({ id: cat, name: cat })));
+      }
     } catch (err) {
       console.error('Error loading 86 board data:', err);
     } finally {
@@ -66,6 +79,32 @@ function Owner86BoardPage() {
   useEffect(() => {
     loadData();
   }, [user?.restaurantId]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleMenuItemUpdated = (updatedItem) => {
+      setItems((currentItems) =>
+        currentItems.map((item) => {
+          if (item.id === updatedItem.id) {
+            const isAvail = updatedItem.isAvailable !== false && updatedItem.isAvailable !== 0 && updatedItem.isAvailable !== '0';
+            return {
+              ...item,
+              ...updatedItem,
+              isAvailable: isAvail,
+              is86d: !isAvail,
+              basePrice: Number(updatedItem.price ?? item.basePrice ?? 0)
+            };
+          }
+          return item;
+        })
+      );
+    };
+
+    socket.on('menuItemUpdated', handleMenuItemUpdated);
+    return () => {
+      socket.off('menuItemUpdated', handleMenuItemUpdated);
+    };
+  }, [socket]);
 
   const stats = useMemo(() => {
     const available = items.filter((item) => item.isAvailable && !item.is86d).length;
@@ -110,13 +149,13 @@ function Owner86BoardPage() {
 
     try {
       const updatedItem = await updateMenuItem(item.id, {
-        restaurantId: user.restaurantId,
+        restaurantId: user?.restaurantId || 1,
         name: item.name,
-        description: item.description,
-        category: item.categoryId,
-        price: item.basePrice,
-        imageUrl: item.imageUrl,
-        isAvailable: willRestore ? 1 : 0
+        description: item.description || '',
+        category: item.categoryId || item.category || 'Unassigned',
+        price: item.basePrice || item.price || 0,
+        imageUrl: item.imageUrl || '',
+        isAvailable: Boolean(willRestore)
       });
 
       setItems((currentItems) =>
@@ -128,7 +167,7 @@ function Owner86BoardPage() {
           return {
             ...currentItem,
             is86d: !willRestore,
-            isAvailable: willRestore
+            isAvailable: Boolean(willRestore)
           };
         })
       );

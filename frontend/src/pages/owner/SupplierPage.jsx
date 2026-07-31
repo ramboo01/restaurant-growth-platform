@@ -58,9 +58,13 @@ function SupplierPage() {
 
   function handleChange(event) {
     const { name, value } = event.target;
+    let finalVal = value;
+    if (name === 'phone') {
+      finalVal = value.replace(/\D/g, '').slice(0, 10);
+    }
     setFormValues((current) => ({
       ...current,
-      [name]: value
+      [name]: finalVal
     }));
   }
 
@@ -234,9 +238,18 @@ function SupplierPage() {
                   <div className="row g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label" htmlFor="supplierPhone">
-                        Phone
+                        Phone Number (Digits only)
                       </label>
-                      <input className="form-control" id="supplierPhone" name="phone" onChange={handleChange} value={formValues.phone} />
+                      <input
+                        type="tel"
+                        className="form-control"
+                        id="supplierPhone"
+                        name="phone"
+                        maxLength={10}
+                        placeholder="e.g. 9876543210"
+                        onChange={handleChange}
+                        value={formValues.phone}
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label" htmlFor="supplierEmail">

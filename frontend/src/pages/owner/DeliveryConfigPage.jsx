@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getDeliveryConfig, updateDeliveryConfig } from '../../services/deliveryService';
 
 function DeliveryConfigPage() {
   const [radius, setRadius] = useState(5.5);
@@ -8,17 +9,66 @@ function DeliveryConfigPage() {
   const [surgeMultiplier, setSurgeMultiplier] = useState(1.5);
   const [isSurgeActive, setIsSurgeActive] = useState(false);
   const [priority, setPriority] = useState(['Owned Couriers', 'DoorDash Drive', 'Uber Direct']);
+  const [partners, setPartners] = useState({
+    doordash: { connected: false, status: 'Simulation Mode' },
+    uber: { connected: false, status: 'Simulation Mode' }
+  });
   
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        setLoading(true);
+        const res = await getDeliveryConfig();
+        if (res.data) {
+          const cfg = res.data;
+          setRadius(cfg.radiusLimit ?? 5.5);
+          setDeliveryFee(cfg.baseDeliveryFee ?? 3.99);
+          setMinOrder(cfg.minOrderValue ?? 15.00);
+          setFreeDeliveryOver(cfg.freeDeliveryThreshold ?? 50.00);
+          setSurgeMultiplier(cfg.surgeMultiplier ?? 1.5);
+          setIsSurgeActive(cfg.isSurgeActive ?? false);
+          if (Array.isArray(cfg.priority) && cfg.priority.length) {
+            setPriority(cfg.priority);
+          }
+          if (cfg.partners) {
+            setPartners(cfg.partners);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load delivery config:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadConfig();
+  }, []);
 
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setSaving(false);
-    setToast('Delivery configurations and dispatch logic saved successfully.');
-    setTimeout(() => setToast(''), 3000);
+    setErrorMsg('');
+    try {
+      await updateDeliveryConfig({
+        radiusLimit: radius,
+        baseDeliveryFee: deliveryFee,
+        minOrderValue: minOrder,
+        freeDeliveryThreshold: freeDeliveryOver,
+        isSurgeActive: isSurgeActive,
+        surgeMultiplier: surgeMultiplier,
+        priority: priority
+      });
+      setToast('Delivery configurations saved to database successfully.');
+      setTimeout(() => setToast(''), 4000);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || err.message || 'Failed to save delivery configurations.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const shiftPriority = (index, direction) => {
@@ -47,6 +97,20 @@ function DeliveryConfigPage() {
       {toast && (
         <div className="alert alert-success shadow-sm mb-4" role="alert">
           <i className="bi bi-check-circle-fill me-2"></i> {toast}
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="alert alert-danger shadow-sm mb-4" role="alert">
+          <i className="bi bi-exclamation-triangle-fill me-2"></i> {errorMsg}
+        </div>
+      )}
+
+      {loading && (
+        <div className="text-center py-4">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading settings...</span>
+          </div>
         </div>
       )}
 
@@ -187,16 +251,24 @@ function DeliveryConfigPage() {
                 <div className="d-flex justify-content-between align-items-center p-3 bg-light rounded-3 border">
                   <div>
                     <div className="fw-bold small">DoorDash Drive API</div>
-                    <span className="text-muted small">Automatic pricing & dispatch sync</span>
+                    <span className="text-muted small">
+                      {partners.doordash.connected ? 'Automatic pricing & dispatch sync' : 'Simulation Mode (Key in .env required for live dispatch)'}
+                    </span>
                   </div>
-                  <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Connected</span>
+                  <span className={`badge ${partners.doordash.connected ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' : 'bg-warning bg-opacity-25 text-dark border border-warning'}`}>
+                    {partners.doordash.connected ? 'Connected' : 'Simulation Mode'}
+                  </span>
                 </div>
                 <div className="d-flex justify-content-between align-items-center p-3 bg-light rounded-3 border">
                   <div>
                     <div className="fw-bold small">Uber Direct Integration</div>
-                    <span className="text-muted small">Automatic courier summoning</span>
+                    <span className="text-muted small">
+                      {partners.uber.connected ? 'Automatic courier summoning' : 'Simulation Mode (Key in .env required for live dispatch)'}
+                    </span>
                   </div>
-                  <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Connected</span>
+                  <span className={`badge ${partners.uber.connected ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' : 'bg-warning bg-opacity-25 text-dark border border-warning'}`}>
+                    {partners.uber.connected ? 'Connected' : 'Simulation Mode'}
+                  </span>
                 </div>
               </div>
             </div>

@@ -16,6 +16,17 @@ api.interceptors.request.use((config) => {
     }
   }
 
+  // Send active restaurant context for multi-restaurant switching
+  const activeRestaurantId = localStorage.getItem('activeRestaurantId');
+  if (activeRestaurantId) {
+    if (config.headers && typeof config.headers.set === 'function') {
+      config.headers.set('X-Restaurant-Id', activeRestaurantId);
+    } else {
+      config.headers = config.headers || {};
+      config.headers['X-Restaurant-Id'] = activeRestaurantId;
+    }
+  }
+
   return config;
 });
 

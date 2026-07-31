@@ -66,22 +66,70 @@ async function updateSeoSettings(restaurantId, payload) {
 
 async function generateAiSeoMeta(restaurantId, businessDetails) {
   const name = businessDetails.name || 'Our Restaurant';
-  const cuisine = businessDetails.cuisine || 'gourmet';
+  const cuisine = businessDetails.cuisine || 'Gourmet';
   const location = businessDetails.location || 'Local Area';
 
   const metaTitle = `Best ${cuisine} Food in ${location} | ${name} | Order Online`;
   const metaDescription = `Indulge in fresh, authentic ${cuisine} cuisine at ${name} in ${location}. Order online for quick local delivery, explore our menu, and earn loyalty rewards today!`;
   const metaKeywords = `${cuisine} food, ${name}, order ${cuisine} online, restaurant in ${location}`;
   
+  const structuredDataJson = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": name,
+    "servesCuisine": cuisine,
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": location
+    },
+    "priceRange": "$$"
+  }, null, 2);
+
   return {
     metaTitle,
     metaDescription,
-    metaKeywords
+    metaKeywords,
+    structuredDataJson
   };
+}
+
+async function generateSitemapXml(restaurantId = 1) {
+  const pool = getDatabasePool();
+
+  let menuItems = [];
+  try {
+    const [rows] = await pool.execute(
+      'SELECT id, name, updated_at FROM menu_items WHERE restaurant_id = ? AND is_available = TRUE',
+      [restaurantId]
+    );
+    menuItems = rows;
+  } catch (err) {
+    menuItems = [];
+  }
+
+  const baseUrl = process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+  const now = new Date().toISOString().split('T')[0];
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+
+  // Main pages
+  xml += `  <url>\n    <loc>${baseUrl}/</loc>\n    <lastmod>${now}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
+  xml += `  <url>\n    <loc>${baseUrl}/guest</loc>\n    <lastmod>${now}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
+
+  // Menu items
+  menuItems.forEach((item) => {
+    const itemMod = item.updated_at ? new Date(item.updated_at).toISOString().split('T')[0] : now;
+    xml += `  <url>\n    <loc>${baseUrl}/guest?item=${item.id}</loc>\n    <lastmod>${itemMod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+  });
+
+  xml += `</urlset>`;
+  return xml;
 }
 
 module.exports = {
   getSeoSettings,
   updateSeoSettings,
-  generateAiSeoMeta
+  generateAiSeoMeta,
+  generateSitemapXml
 };

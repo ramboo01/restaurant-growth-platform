@@ -33,9 +33,17 @@ function GuestListPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await customerService.getCustomers();
-      // Service returns paginated result: { items: [...], meta: {...} } or array
-      setCustomers(data.items || data || []);
+      const res = await customerService.getCustomers();
+      const list = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.items)
+          ? res.items
+          : Array.isArray(res?.data)
+            ? res.data
+            : Array.isArray(res?.data?.items)
+              ? res.data.items
+              : [];
+      setCustomers(list);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to fetch customers.');
     } finally {
@@ -48,11 +56,13 @@ function GuestListPage() {
   }, []);
 
   const filteredGuests = useMemo(() => {
+    const list = Array.isArray(customers) ? customers : [];
     const normalizedSearch = searchTerm.trim().toLowerCase();
-    return customers.filter((guest) => {
+    return list.filter((guest) => {
       return (
-        (guest.name || '').toLowerCase().includes(normalizedSearch) ||
-        (guest.phone || '').toLowerCase().includes(normalizedSearch)
+        (guest?.name || '').toLowerCase().includes(normalizedSearch) ||
+        (guest?.phone || '').toLowerCase().includes(normalizedSearch) ||
+        (guest?.email || '').toLowerCase().includes(normalizedSearch)
       );
     });
   }, [customers, searchTerm]);

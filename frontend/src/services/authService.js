@@ -10,6 +10,11 @@ export async function register(payload) {
   return response.data;
 }
 
+export async function registerOwner(payload) {
+  const response = await api.post('/api/auth/owner-register', payload);
+  return response.data;
+}
+
 export function logout() {
   localStorage.removeItem('jwt');
   localStorage.removeItem('user');
@@ -17,5 +22,15 @@ export function logout() {
 
 export async function getProfile() {
   const response = await api.get('/api/auth/profile');
+  return response.data;
+}
+
+export async function sendOtpApi(phone) {
+  const response = await api.post('/api/auth/send-otp', { phone });
+  return response.data;
+}
+
+export async function verifyOtpApi(phone, otp) {
+  const response = await api.post('/api/auth/verify-otp', { phone, otp });
   return response.data;
 }

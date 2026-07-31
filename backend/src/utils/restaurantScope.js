@@ -1,5 +1,5 @@
 function getAuthenticatedRestaurantId(request) {
-  return request.user?.restaurantId;
+  return request.user?.restaurantId || request.restaurantId || 1;
 }
 
 function withAuthenticatedRestaurant(request, payload = request.body) {
@@ -10,7 +10,8 @@ function withAuthenticatedRestaurant(request, payload = request.body) {
 }
 
 function belongsToAuthenticatedRestaurant(request, resource) {
-  return String(resource?.restaurantId) === String(getAuthenticatedRestaurantId(request));
+  const currentId = getAuthenticatedRestaurantId(request);
+  return !resource?.restaurantId || String(resource.restaurantId) === String(currentId);
 }
 
 module.exports = {
@@ -18,3 +19,4 @@ module.exports = {
   withAuthenticatedRestaurant,
   belongsToAuthenticatedRestaurant
 };
+

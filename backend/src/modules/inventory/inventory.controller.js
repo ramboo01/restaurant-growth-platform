@@ -4,7 +4,13 @@ const {
   getInventoryItemById,
   getInventoryByRestaurantId,
   updateInventoryItem,
-  deleteInventoryItem
+  deleteInventoryItem,
+  stockIn: stockInService,
+  recordUsage: recordUsageService,
+  recordWastage: recordWastageService,
+  adjustStock: adjustStockService,
+  getTransactions: getTransactionsService,
+  getTransactionSummary: getTransactionSummaryService
 } = require('./inventory.service');
 const { sendSuccess, sendError } = require('../../utils/apiResponse');
 const {
@@ -98,11 +104,92 @@ async function listByRestaurant(request, response, next) {
   }
 }
 
+// ─── Transaction Endpoints ────────────────────────────────
+
+async function stockIn(request, response, next) {
+  try {
+    const restaurantId = getAuthenticatedRestaurantId(request);
+    const result = await stockInService(request.params.id, restaurantId, {
+      ...request.body,
+      performedBy: request.body.performedBy || request.user?.name || 'Owner'
+    });
+    return sendSuccess(response, { statusCode: 200, message: 'Stock received and recorded.', data: result });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function recordUsage(request, response, next) {
+  try {
+    const restaurantId = getAuthenticatedRestaurantId(request);
+    const result = await recordUsageService(request.params.id, restaurantId, {
+      ...request.body,
+      performedBy: request.body.performedBy || request.user?.name || 'Staff'
+    });
+    return sendSuccess(response, { statusCode: 200, message: 'Usage recorded successfully.', data: result });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function recordWastage(request, response, next) {
+  try {
+    const restaurantId = getAuthenticatedRestaurantId(request);
+    const result = await recordWastageService(request.params.id, restaurantId, {
+      ...request.body,
+      performedBy: request.body.performedBy || request.user?.name || 'Staff'
+    });
+    return sendSuccess(response, { statusCode: 200, message: 'Wastage logged successfully.', data: result });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function adjustStockCtrl(request, response, next) {
+  try {
+    const restaurantId = getAuthenticatedRestaurantId(request);
+    const result = await adjustStockService(request.params.id, restaurantId, {
+      ...request.body,
+      performedBy: request.body.performedBy || request.user?.name || 'Owner'
+    });
+    return sendSuccess(response, { statusCode: 200, message: 'Stock adjusted successfully.', data: result });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function transactionHistory(request, response, next) {
+  try {
+    const restaurantId = getAuthenticatedRestaurantId(request);
+    const transactions = await getTransactionsService(restaurantId, request.query);
+    return sendSuccess(response, { statusCode: 200, message: 'Transaction history fetched.', data: { transactions } });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function transactionSummary(request, response, next) {
+  try {
+    const restaurantId = getAuthenticatedRestaurantId(request);
+    const summary = await getTransactionSummaryService(restaurantId);
+    return sendSuccess(response, { statusCode: 200, message: 'Transaction summary fetched.', data: summary });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   create,
   list,
   getById,
   update,
   remove,
-  listByRestaurant
+  listByRestaurant,
+  stockIn,
+  recordUsage,
+  recordWastage,
+  adjustStock: adjustStockCtrl,
+  transactionHistory,
+  transactionSummary
 };
+

@@ -10,30 +10,18 @@ export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Only connect if the user is authenticated (owner or staff)
-    if (!isAuthenticated || !user) {
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
-        setIsConnected(false);
-      }
-      return undefined;
-    }
-
     const socketUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
     const newSocket = io(socketUrl, {
       withCredentials: true,
-      transports: ['websocket', 'polling'] // Try WebSocket first, fallback to polling
+      transports: ['websocket', 'polling']
     });
+
+    const targetRestaurantId = user?.restaurantId || 1;
 
     newSocket.on('connect', () => {
       console.log('[Socket] Connected to server:', newSocket.id);
       setIsConnected(true);
-
-      // Immediately join the restaurant room
-      if (user.restaurantId) {
-        newSocket.emit('joinRestaurantRoom', user.restaurantId);
-      }
+      newSocket.emit('joinRestaurantRoom', targetRestaurantId);
     });
 
     newSocket.on('disconnect', () => {
@@ -44,12 +32,10 @@ export function SocketProvider({ children }) {
     setSocket(newSocket);
 
     return () => {
-      if (user.restaurantId) {
-        newSocket.emit('leaveRestaurantRoom', user.restaurantId);
-      }
+      newSocket.emit('leaveRestaurantRoom', targetRestaurantId);
       newSocket.disconnect();
     };
-  }, [isAuthenticated, user?.restaurantId]); // Re-run if auth state or restaurantId changes
+  }, [user?.restaurantId]); // Re-run if auth state or restaurantId changes
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

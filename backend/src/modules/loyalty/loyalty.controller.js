@@ -85,7 +85,8 @@ module.exports = {
   listRewards,
   addReward,
   editReward,
-  removeReward
+  removeReward,
+  redeemAtPos
 };
 
 async function getSummary(request, response, next) {
@@ -135,5 +136,19 @@ async function removeReward(request, response, next) {
     return sendSuccess(response, { statusCode: 200, message: 'Reward deleted successfully.', data: {} });
   } catch (error) {
     return next(error);
+  }
+}
+
+async function redeemAtPos(request, response, next) {
+  try {
+    const restaurantId = request.user?.restaurantId || 1;
+    const { phone, pointsToDeduct, rewardName } = request.body;
+    if (!phone || !pointsToDeduct) {
+      return sendError(response, { statusCode: 400, message: 'Phone and pointsToDeduct are required.' });
+    }
+    const result = await require('./loyalty.service').redeemLoyaltyPointsByPhone(restaurantId, phone, Number(pointsToDeduct), rewardName || 'POS Reward');
+    return sendSuccess(response, { statusCode: 200, message: 'Loyalty points redeemed successfully at POS register!', data: result });
+  } catch (error) {
+    return sendError(response, { statusCode: 400, message: error.message });
   }
 }

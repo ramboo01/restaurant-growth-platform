@@ -1,6 +1,6 @@
 const Joi = require('joi');
 
-const orderStatuses = ['Pending', 'Accepted', 'Preparing', 'Ready', 'Out for Delivery', 'Completed', 'Cancelled'];
+const orderStatuses = ['Pending', 'Accepted', 'Preparing', 'Ready', 'Out for Delivery', 'Delivered', 'Completed', 'Cancelled'];
 
 const orderSchema = Joi.object({
   restaurantId: Joi.number().integer().positive().optional(),
@@ -16,8 +16,9 @@ const orderSchema = Joi.object({
 });
 
 const orderStatusSchema = Joi.object({
-  status: Joi.string().valid(...orderStatuses).required()
-});
+  status: Joi.string().valid(...orderStatuses).required(),
+  otp: Joi.string().allow('', null).optional()
+}).unknown(true);
 
 module.exports = {
   orderSchema,

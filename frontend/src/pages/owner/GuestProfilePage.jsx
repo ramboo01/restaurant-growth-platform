@@ -61,9 +61,10 @@ function GuestProfilePage() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await customerService.getCustomerById(guestId);
-      setGuest(data.customer || data);
-      setNotes(data.customer?.notes || data.notes || '');
+      const res = await customerService.getCustomerById(guestId);
+      const target = res?.customer || res?.data?.customer || res?.data || res;
+      setGuest(target);
+      setNotes(target?.notes || '');
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to fetch guest details.');
     } finally {

@@ -20,12 +20,16 @@ function LoginPage() {
       const loggedUser = response?.data?.user;
       const userRole = loggedUser?.role;
       let defaultDestination = '/owner';
-      if (userRole === 'Staff') defaultDestination = '/staff';
-      else if (userRole === 'Driver') defaultDestination = '/driver';
+      if (userRole === 'Staff') defaultDestination = '/staff/kitchen';
+      else if (userRole === 'Driver') defaultDestination = '/driver/orders';
       else if (userRole === 'Admin') defaultDestination = '/admin';
       else if (userRole === 'Customer') defaultDestination = '/';
 
-      const destination = location.state?.from?.pathname || defaultDestination;
+      const fromPath = location.state?.from?.pathname;
+      let destination = defaultDestination;
+      if (fromPath && fromPath !== '/' && fromPath !== '/login' && fromPath !== '/signin') {
+        destination = fromPath;
+      }
       navigate(destination, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed.');

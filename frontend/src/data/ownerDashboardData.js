@@ -19,6 +19,7 @@ export const ownerNavigationGroups = [
       { label: 'Guests', to: '/owner/guests', icon: 'bi-people' },
       { label: 'Menu', to: '/owner/menu', icon: 'bi-card-list' },
       { label: '86 Board', to: '/owner/86-board', icon: 'bi-toggle-off' },
+      { label: 'Site Editor (CMS)', to: '/owner/site-editor', icon: 'bi-palette' },
       { label: 'Site / App', to: '/owner/site-app', icon: 'bi-window-sidebar' }
     ]
   },
@@ -45,8 +46,11 @@ export const ownerNavigationGroups = [
     label: 'Business',
     items: [
       { label: 'Franchise', to: '/owner/franchise', icon: 'bi-diagram-3' },
+      { label: 'Franchise Compliance', to: '/owner/franchise-compliance', icon: 'bi-shield-check' },
+      { label: 'Franchise Comparison', to: '/owner/franchise-comparison', icon: 'bi-bar-chart-line' },
       { label: 'Reports', to: '/owner/reports', icon: 'bi-bar-chart' },
-      { label: 'Financial Products', to: '/owner/financial-products', icon: 'bi-credit-card' }
+      { label: 'Financial Products', to: '/owner/financial-products', icon: 'bi-credit-card' },
+      { label: 'Data Export Tool', to: '/owner/data-export', icon: 'bi-file-earmark-arrow-down' }
     ]
   },
   {

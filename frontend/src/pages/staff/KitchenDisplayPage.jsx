@@ -125,12 +125,19 @@ function KitchenDisplayPage() {
   }
 
   async function handleAdvanceStatus(order) {
-    const nextStatusMap = {
-      Pending: 'Preparing',
-      Preparing: 'Ready',
-      Ready: 'Completed'
-    };
-    const nextStatus = nextStatusMap[order.orderStatus];
+    const isDelivery = (order.fulfillmentDetails?.type || 'Delivery').toLowerCase() === 'delivery';
+
+    let nextStatus = '';
+    if (order.orderStatus === 'Pending') nextStatus = 'Preparing';
+    else if (order.orderStatus === 'Preparing') nextStatus = 'Ready';
+    else if (order.orderStatus === 'Ready') {
+      if (isDelivery) {
+        showToast(`Order ${order.orderNumber} is ready! Waiting for delivery driver pickup.`);
+        return;
+      }
+      nextStatus = 'Completed';
+    }
+
     if (!nextStatus) return;
 
     setUpdatingId(order.id);
@@ -153,10 +160,15 @@ function KitchenDisplayPage() {
     );
   }, [orders, searchTerm]);
 
-  function getActionLabel(status) {
+  function getActionLabel(order) {
+    const status = order.orderStatus;
+    const isDelivery = (order.fulfillmentDetails?.type || 'Delivery').toLowerCase() === 'delivery';
+
     if (status === 'Pending') return 'Start Preparing';
     if (status === 'Preparing') return 'Mark Ready';
-    if (status === 'Ready') return 'Complete Order';
+    if (status === 'Ready') {
+      return isDelivery ? 'Ready (Awaiting Driver Pickup)' : 'Handover & Complete';
+    }
     return 'Completed';
   }
 
@@ -206,64 +218,73 @@ function KitchenDisplayPage() {
         <LoadingState message="Loading live kitchen queue..." />
       ) : filteredOrders.length ? (
         <div className="row g-3">
-          {filteredOrders.map((order) => (
-            <div className="col-12 col-md-6 col-xxl-4" key={order.id}>
-              <article className="card border-0 guest-cart-item h-100">
-                <div className="card-body d-flex flex-column">
-                  <div className="d-flex justify-content-between gap-3 mb-3">
-                    <div>
-                      <p className="text-secondary small mb-1">Order Number</p>
-                      <h2 className="h6 mb-0">{order.orderNumber}</h2>
+          {filteredOrders.map((order) => {
+            const isDelivery = (order.fulfillmentDetails?.type || 'Delivery').toLowerCase() === 'delivery';
+            const isButtonDisabled = updatingId === order.id || (order.orderStatus === 'Ready' && isDelivery);
+
+            return (
+              <div className="col-12 col-md-6 col-xxl-4" key={order.id}>
+                <article className="card border-0 guest-cart-item h-100">
+                  <div className="card-body d-flex flex-column">
+                    <div className="d-flex justify-content-between gap-3 mb-3">
+                      <div>
+                        <p className="text-secondary small mb-1">Order Number</p>
+                        <h2 className="h6 mb-0">{order.orderNumber}</h2>
+                      </div>
+                      <span className={`badge ${order.orderStatus === 'Preparing' ? 'text-bg-warning' : order.orderStatus === 'Ready' ? 'text-bg-success' : 'text-bg-secondary'}`}>
+                        {order.orderStatus === 'Ready' && isDelivery ? 'Ready (Awaiting Driver)' : order.orderStatus}
+                      </span>
                     </div>
-                    <span className={`badge ${order.orderStatus === 'Preparing' ? 'text-bg-warning' : order.orderStatus === 'Ready' ? 'text-bg-success' : 'text-bg-secondary'}`}>
-                      {order.orderStatus}
-                    </span>
-                  </div>
 
-                  <div className="mb-3">
-                    <p className="text-secondary small mb-1">Customer</p>
-                    <p className="fw-semibold mb-0">{order.customerName}</p>
-                  </div>
-
-                  <div className="border-top border-bottom py-3 mb-3">
-                    <p className="text-secondary small mb-2">Items</p>
-                    <ul className="list-unstyled mb-0 vstack gap-2">
-                      {order.items.map((item, idx) => (
-                        <li key={idx} className="d-flex justify-content-between small">
-                          <span>{item.itemName || item.name} <span className="text-secondary">x{item.quantity}</span></span>
-                          {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                            <span className="text-muted text-end small font-monospace">
-                              ({item.selectedModifiers.map(m => m.name).join(', ')})
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="vstack gap-2 mb-4 small">
-                    <div className="d-flex justify-content-between">
-                      <span className="text-secondary">Type</span>
-                      <span>{order.fulfillmentDetails?.type || 'Pickup'}</span>
+                    <div className="mb-3">
+                      <p className="text-secondary small mb-1">Customer</p>
+                      <p className="fw-semibold mb-0">{order.customerName}</p>
                     </div>
-                    <div className="d-flex justify-content-between">
-                      <span className="text-secondary">Time Placed</span>
-                      <span>{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : '-'}</span>
-                    </div>
-                  </div>
 
-                  <button
-                    className="btn btn-primary mt-auto w-100"
-                    disabled={updatingId === order.id}
-                    onClick={() => handleAdvanceStatus(order)}
-                    type="button"
-                  >
-                    {updatingId === order.id ? 'Updating...' : getActionLabel(order.orderStatus)}
-                  </button>
-                </div>
-              </article>
-            </div>
-          ))}
+                    <div className="border-top border-bottom py-3 mb-3">
+                      <p className="text-secondary small mb-2">Items</p>
+                      <ul className="list-unstyled mb-0 vstack gap-2">
+                        {order.items.map((item, idx) => (
+                          <li key={idx} className="d-flex justify-content-between small">
+                            <span>{item.itemName || item.name} <span className="text-secondary">x{item.quantity}</span></span>
+                            {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                              <span className="text-muted text-end small font-monospace">
+                                ({item.selectedModifiers.map(m => m.name).join(', ')})
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="vstack gap-2 mb-4 small">
+                      <div className="d-flex justify-content-between">
+                        <span className="text-secondary">Type</span>
+                        <span className="fw-medium">{order.fulfillmentDetails?.type || 'Delivery'}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span className="text-secondary">Time Placed</span>
+                        <span>{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : '-'}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      className={`btn mt-auto w-100 ${
+                        order.orderStatus === 'Ready' && isDelivery 
+                          ? 'btn-outline-success fw-bold' 
+                          : 'btn-primary'
+                      }`}
+                      disabled={isButtonDisabled}
+                      onClick={() => handleAdvanceStatus(order)}
+                      type="button"
+                    >
+                      {updatingId === order.id ? 'Updating...' : getActionLabel(order)}
+                    </button>
+                  </div>
+                </article>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <EmptyState title="Kitchen queue is empty" message="No active kitchen orders at the moment." />

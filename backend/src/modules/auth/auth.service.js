@@ -4,6 +4,7 @@ const { JWT_SECRET } = require('../../config/env');
 const { getDatabasePool } = require('../../config/database');
 
 const USER_ROLES = ['Admin', 'Owner', 'Manager', 'Staff', 'Driver', 'Customer'];
+const INTERNAL_ROLES = ['Admin', 'Owner', 'Manager', 'Staff', 'Driver'];
 
 function getJwtSecret() {
   if (!JWT_SECRET) {
@@ -13,7 +14,7 @@ function getJwtSecret() {
 }
 
 function normalizeRole(role) {
-  return role || 'Owner';
+  return role || 'Customer';
 }
 
 async function registerUser({ name, email, password, role, restaurantId }) {
@@ -99,6 +100,22 @@ async function loginUser({ email, password }) {
     throw authError;
   }
 
+  // Fetch all restaurants this user can access
+  let accessibleRestaurants = [];
+  try {
+    const [restRows] = await getDatabasePool().execute(
+      `SELECT r.id, r.name, r.status, ur.is_primary AS isPrimary
+       FROM user_restaurants ur
+       JOIN restaurants r ON ur.restaurant_id = r.id
+       WHERE ur.user_id = ?
+       ORDER BY ur.is_primary DESC, r.name ASC`,
+      [user.id]
+    );
+    accessibleRestaurants = restRows;
+  } catch {
+    // Table might not exist yet — graceful fallback
+  }
+
   let token;
   try {
     token = jwt.sign(
@@ -125,7 +142,8 @@ async function loginUser({ email, password }) {
       name: user.name,
       email: user.email,
       role: user.role,
-      restaurantId: user.restaurantId
+      restaurantId: user.restaurantId,
+      accessibleRestaurants
     }
   };
 }

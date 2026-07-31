@@ -161,28 +161,70 @@ function StaffHomePage() {
 
       {/* Quick Actions */}
       <div className="row g-3 mb-4">
-        <div className="col-12 col-md-6">
-          <Link to="/staff/orders" className="card border-0 shadow-sm rounded-3 text-decoration-none h-100 p-4 d-flex flex-row align-items-center gap-3 hover-shadow">
+        <div className="col-12 col-md-6 col-lg-3">
+          <Link to="/staff/orders" className="card border-0 shadow-sm rounded-3 text-decoration-none h-100 p-3 d-flex flex-row align-items-center gap-3 hover-shadow">
             <div className="bg-primary bg-opacity-10 rounded-3 p-3">
               <i className="bi bi-receipt fs-3 text-primary"></i>
             </div>
             <div>
-              <div className="fw-bold text-dark fs-5">Order Queue</div>
-              <span className="text-muted small">View and manage all incoming restaurant orders.</span>
+              <div className="fw-bold text-dark">Order Queue</div>
+              <span className="text-muted small">Manage incoming orders.</span>
             </div>
-            <i className="bi bi-chevron-right ms-auto text-muted"></i>
           </Link>
         </div>
-        <div className="col-12 col-md-6">
-          <Link to="/staff/kitchen" className="card border-0 shadow-sm rounded-3 text-decoration-none h-100 p-4 d-flex flex-row align-items-center gap-3">
+        <div className="col-12 col-md-6 col-lg-3">
+          <Link to="/staff/kitchen" className="card border-0 shadow-sm rounded-3 text-decoration-none h-100 p-3 d-flex flex-row align-items-center gap-3">
             <div className="bg-danger bg-opacity-10 rounded-3 p-3">
               <i className="bi bi-fire fs-3 text-danger"></i>
             </div>
             <div>
-              <div className="fw-bold text-dark fs-5">Kitchen Display System</div>
-              <span className="text-muted small">Full-screen KDS for active cooking and prep stations.</span>
+              <div className="fw-bold text-dark">Kitchen Display</div>
+              <span className="text-muted small">KDS cooking stations.</span>
             </div>
-            <i className="bi bi-chevron-right ms-auto text-muted"></i>
+          </Link>
+        </div>
+        <div className="col-12 col-md-6 col-lg-3">
+          <Link to="/staff/pos-loyalty" className="card border-0 shadow-sm rounded-3 text-decoration-none h-100 p-3 d-flex flex-row align-items-center gap-3">
+            <div className="bg-warning bg-opacity-25 rounded-3 p-3">
+              <i className="bi bi-credit-card-2-front fs-3 text-dark"></i>
+            </div>
+            <div>
+              <div className="fw-bold text-dark">POS Loyalty</div>
+              <span className="text-muted small">Redeem guest rewards.</span>
+            </div>
+          </Link>
+        </div>
+        <div className="col-12 col-md-6 col-lg-3">
+          <Link to="/staff/availability" className="card border-0 shadow-sm rounded-3 text-decoration-none h-100 p-3 d-flex flex-row align-items-center gap-3">
+            <div className="bg-success bg-opacity-10 rounded-3 p-3">
+              <i className="bi bi-calendar-check fs-3 text-success"></i>
+            </div>
+            <div>
+              <div className="fw-bold text-dark">Shift Claiming</div>
+              <span className="text-muted small">Claim open team shifts.</span>
+            </div>
+          </Link>
+        </div>
+        <div className="col-12 col-md-6 col-lg-3">
+          <Link to="/staff/performance-payout" className="card border-0 shadow-sm rounded-3 text-decoration-none h-100 p-3 d-flex flex-row align-items-center gap-3">
+            <div className="bg-info bg-opacity-10 rounded-3 p-3">
+              <i className="bi bi-cash-stack fs-3 text-info"></i>
+            </div>
+            <div>
+              <div className="fw-bold text-dark">My Payout</div>
+              <span className="text-muted small">View scorecard & cash out.</span>
+            </div>
+          </Link>
+        </div>
+        <div className="col-12 col-md-6 col-lg-3">
+          <Link to="/staff/guest-lookup" className="card border-0 shadow-sm rounded-3 text-decoration-none h-100 p-3 d-flex flex-row align-items-center gap-3">
+            <div className="bg-purple bg-opacity-10 rounded-3 p-3" style={{ background: 'rgba(111,66,193,0.1)' }}>
+              <i className="bi bi-person-search fs-3" style={{ color: '#6f42c1' }}></i>
+            </div>
+            <div>
+              <div className="fw-bold text-dark">Guest Lookup</div>
+              <span className="text-muted small">Check allergy & VIP profile.</span>
+            </div>
           </Link>
         </div>
       </div>

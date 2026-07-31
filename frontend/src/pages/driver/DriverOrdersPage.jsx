@@ -5,7 +5,7 @@ import EmptyState from '../../components/feedback/EmptyState.jsx';
 import { driverService } from '../../services/driverService.js';
 import { useSocket } from '../../context/SocketContext.jsx';
 
-const driverStatuses = ['Ready', 'Out for Delivery', 'Delivered'];
+const driverStatuses = ['Pending', 'Preparing', 'Ready', 'Out for Delivery', 'Delivered'];
 
 function formatCurrency(value) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value) || 0);
@@ -16,8 +16,8 @@ function normalizeOrder(order) {
     ? JSON.parse(order.fulfillmentDetails)
     : order.fulfillmentDetails || {};
 
-  const addrStr = fulfillment.address
-    ? `${fulfillment.address}${fulfillment.city ? `, ${fulfillment.city}` : ''}`
+  const addrStr = fulfillment.addressLine || fulfillment.address
+    ? `${fulfillment.addressLine || fulfillment.address}${fulfillment.city ? `, ${fulfillment.city}` : ''}`
     : 'Store Pickup';
 
   return {
@@ -28,8 +28,8 @@ function normalizeOrder(order) {
     totalAmount: Number(order.totalAmount ?? order.total_amount ?? 0),
     createdAt: order.createdAt ?? order.created_at ?? '',
     address: addrStr,
-    fulfillmentType: fulfillment.type || 'Pickup',
-    deliveryTime: fulfillment.deliveryTime || fulfillment.estimatedDelivery || 'ASAP'
+    fulfillmentType: fulfillment.type || 'Delivery', // Default to Delivery for driver orders if type is present or fallback
+    deliveryTime: fulfillment.deliveryTime || fulfillment.estimatedDelivery || fulfillment.estimatedTime || 'ASAP'
   };
 }
 
@@ -53,7 +53,7 @@ function DriverOrdersPage() {
       const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
       
       // Filter only delivery orders
-      const normalized = list.map(normalizeOrder).filter(o => o.fulfillmentType === 'Delivery');
+      const normalized = list.map(normalizeOrder).filter(o => o.fulfillmentType === 'Delivery' || !o.fulfillmentType);
       setOrders(normalized);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to fetch driver orders.');
@@ -74,19 +74,19 @@ function DriverOrdersPage() {
 
     const handleNewOrder = (orderData) => {
       const normalized = normalizeOrder(orderData);
-      if (normalized.fulfillmentType === 'Delivery') {
+      if (normalized.fulfillmentType === 'Delivery' || !normalized.fulfillmentType) {
         setOrders(current => {
           if (current.some(o => o.id === normalized.id)) return current;
           return [normalized, ...current];
         });
-        showToast(`New delivery order ready: ${normalized.orderNumber}`);
+        showToast(`New delivery order received: ${normalized.orderNumber}`);
       }
     };
 
     const handleOrderUpdated = (orderData) => {
       const normalized = normalizeOrder(orderData);
       setOrders(current => {
-        if (normalized.fulfillmentType !== 'Delivery') {
+        if (normalized.fulfillmentType !== 'Delivery' && normalized.fulfillmentType) {
           return current.filter(o => o.id !== normalized.id);
         }
         return current.map(o => o.id === normalized.id ? normalized : o);
@@ -94,11 +94,15 @@ function DriverOrdersPage() {
     };
 
     socket.on('newOrder', handleNewOrder);
+    socket.on('NEW_ORDER', handleNewOrder);
     socket.on('orderUpdated', handleOrderUpdated);
+    socket.on('ORDER_STATUS_CHANGED', handleOrderUpdated);
 
     return () => {
       socket.off('newOrder', handleNewOrder);
+      socket.off('NEW_ORDER', handleNewOrder);
       socket.off('orderUpdated', handleOrderUpdated);
+      socket.off('ORDER_STATUS_CHANGED', handleOrderUpdated);
     };
   }, [socket]);
 
@@ -131,7 +135,7 @@ function DriverOrdersPage() {
     setUpdatingId(orderId);
     try {
       await driverService.updateDriverOrder(orderId, { orderStatus: newStatus, otp: enteredOtp });
-      showToast(`Order marked as Delivered! Security PIN verified.`);
+      showToast(`Order marked as ${newStatus}!`);
       setOtpModalOrder(null);
       await fetchOrders();
     } catch (err) {
@@ -140,7 +144,6 @@ function DriverOrdersPage() {
       setUpdatingId('');
     }
   };
-
 
   const driverOrders = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -155,9 +158,19 @@ function DriverOrdersPage() {
   }, [orders, searchTerm, statusFilter]);
 
   function getActionLabel(status) {
-    if (status === 'Ready') return 'Accept Delivery';
-    if (status === 'Out for Delivery') return 'Mark Delivered';
+    if (status === 'Pending') return 'Order Placed (Waiting for Kitchen)';
+    if (status === 'Preparing') return 'Kitchen Preparing Food...';
+    if (status === 'Ready') return 'Accept Delivery & Start Drive';
+    if (status === 'Out for Delivery') return 'Verify PIN & Mark Delivered';
     return 'Delivered';
+  }
+
+  function getBadgeClass(status) {
+    if (status === 'Pending') return 'text-bg-secondary';
+    if (status === 'Preparing') return 'text-bg-warning';
+    if (status === 'Ready') return 'text-bg-primary';
+    if (status === 'Out for Delivery') return 'text-bg-info';
+    return 'text-bg-success';
   }
 
   return (
@@ -228,19 +241,19 @@ function DriverOrdersPage() {
                       <p className="text-secondary small mb-1">Order Number</p>
                       <h2 className="h6 mb-0">{order.orderNumber}</h2>
                     </div>
-                    <span className={`badge ${order.orderStatus === 'Out for Delivery' ? 'text-bg-warning' : 'text-bg-success'}`}>
-                      {order.orderStatus}
+                    <span className={`badge ${getBadgeClass(order.orderStatus)}`}>
+                      {order.orderStatus === 'Pending' ? 'Order Placed' : order.orderStatus === 'Preparing' ? 'Kitchen Preparing' : order.orderStatus}
                     </span>
                   </div>
 
                   <div className="vstack gap-2 mb-4">
                     <div className="d-flex justify-content-between gap-3">
                       <span className="text-secondary">Customer</span>
-                      <span>{order.customerName}</span>
+                      <span className="fw-medium">{order.customerName}</span>
                     </div>
                     <div className="d-flex justify-content-between gap-3">
                       <span className="text-secondary">Address</span>
-                      <span className="text-end">{order.address}</span>
+                      <span className="text-end fw-medium">{order.address}</span>
                     </div>
                     <div className="d-flex justify-content-between gap-3">
                       <span className="text-secondary">Delivery Time</span>
@@ -248,13 +261,21 @@ function DriverOrdersPage() {
                     </div>
                     <div className="d-flex justify-content-between gap-3">
                       <span className="text-secondary">Total</span>
-                      <span>{formatCurrency(order.totalAmount)}</span>
+                      <span className="fw-semibold text-success">{formatCurrency(order.totalAmount)}</span>
                     </div>
                   </div>
 
                   <button
-                    className="btn btn-primary mt-auto w-100"
-                    disabled={order.orderStatus === 'Delivered' || updatingId === order.id}
+                    className={`btn mt-auto w-100 ${
+                      order.orderStatus === 'Ready' 
+                        ? 'btn-primary shadow-sm fw-bold' 
+                        : order.orderStatus === 'Out for Delivery' 
+                        ? 'btn-warning fw-bold' 
+                        : order.orderStatus === 'Delivered' 
+                        ? 'btn-outline-success' 
+                        : 'btn-secondary bg-opacity-75'
+                    }`}
+                    disabled={['Pending', 'Preparing', 'Delivered'].includes(order.orderStatus) || updatingId === order.id}
                     onClick={() => advanceStatus(order.id)}
                     type="button"
                   >

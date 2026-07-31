@@ -10,6 +10,7 @@ router.get('/rewards', loyaltyController.listRewards);
 router.post('/rewards', loyaltyController.addReward);
 router.put('/rewards/:id', loyaltyController.editReward);
 router.delete('/rewards/:id', loyaltyController.removeReward);
+router.post('/redeem-pos', loyaltyController.redeemAtPos);
 
 router.post('/', validate(loyaltySchema), loyaltyController.create);
 router.get('/', loyaltyController.list);

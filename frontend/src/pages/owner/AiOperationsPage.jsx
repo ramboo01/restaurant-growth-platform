@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { aiService } from '../../services/aiService.js';
 
 function AiOperationsPage() {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hello Alex! I am your AI Operations Copilot. Ask me anything about restaurant sales trends, forecasting, labor allocation, or weather adjustments.',
+      content: 'Hello! I am your live AI Operations Copilot. Ask me anything about your restaurant sales trends, inventory stockouts, labor allocation, or weather adjustments.',
       stats: null
     }
   ]);
@@ -14,7 +15,7 @@ function AiOperationsPage() {
   const sampleQueries = [
     { text: "Will it rain this Friday and how will it affect our sales?", value: "Will it rain this Friday and how will it affect our sales?" },
     { text: "Predict next week's staffing requirements", value: "Recommend next week's staffing levels based on historical averages and forecasted weather." },
-    { text: "Analyze inventory stockouts for this month", value: "Analyze what items had the highest 86 rate this month and how to improve ordering." }
+    { text: "Analyze inventory stockouts for this month", value: "Analyze what items had the highest stockout rate this month and how to improve ordering." }
   ];
 
   const handleSend = async (e) => {
@@ -26,36 +27,29 @@ function AiOperationsPage() {
     setQuery('');
     setLoading(true);
 
-    // Simulate AI Operations response logic
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    let assistantResponse = "";
-    let stats = null;
-
-    if (userQuery.toLowerCase().includes('rain') || userQuery.toLowerCase().includes('friday')) {
-      assistantResponse = "Rain is forecasted this Friday in Chicago (80% precipitation). Based on similar historic events, expect delivery orders to surge by +24% while dine-in/pickup will decrease by -15%.";
-      stats = [
-        { label: 'Delivery Shift Delta', value: '+24%', color: 'text-success' },
-        { label: 'Dine-In Delta', value: '-15%', color: 'text-danger' },
-        { label: 'Recommended Driver Count', value: '6 Drivers (Normally 4)', color: 'text-primary' }
-      ];
-    } else if (userQuery.toLowerCase().includes('staff') || userQuery.toLowerCase().includes('week')) {
-      assistantResponse = "Based on historical averages and the upcoming high-temperature index next week, sales are projected to reach $28,500 (+15% higher than this week). I recommend allocating 45 total shift hours for kitchen staff and 35 hours for FOH.";
-      stats = [
-        { label: 'Projected Weekly Sales', value: '$28,500', color: 'text-success' },
-        { label: 'Kitchen Hours Required', value: '45 hrs', color: 'text-primary' },
-        { label: 'FOH Hours Required', value: '35 hrs', color: 'text-primary' }
-      ];
-    } else {
-      assistantResponse = "Spicy Rigatoni Pasta had the highest stockout rate this month, being 86'd 4 times, primarily on Friday evenings. I suggest increasing the standard prep-batch count by +25% on Thursday morning to meet weekend demand.";
-      stats = [
-        { label: 'Pasta Stockouts', value: '4 occurrences', color: 'text-danger' },
-        { label: 'Suggested Prep Delta', value: '+25%', color: 'text-success' }
-      ];
+    try {
+      const res = await aiService.queryCopilot(userQuery);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: res.content || 'Analysis complete based on live restaurant data.',
+          stats: res.stats || null
+        }
+      ]);
+    } catch (err) {
+      console.error('[AI Operations] Query failed:', err);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Sorry, I encountered an issue accessing live database metrics. Please try again.',
+          stats: null
+        }
+      ]);
+    } finally {
+      setLoading(false);
     }
-
-    setMessages(prev => [...prev, { role: 'assistant', content: assistantResponse, stats }]);
-    setLoading(false);
   };
 
   return (

@@ -22,6 +22,7 @@ function normalizeMenuItem(item) {
     categoryId: category,
     basePrice: price,
     price,
+    imageUrl: item.imageUrl ?? item.image_url ?? '',
     imagePlaceholder: item.imagePlaceholder ?? item.name?.slice(0, 2)?.toUpperCase() ?? 'IT',
     isAvailable: item.isAvailable !== false,
     is86d: item.is86d ?? item.isAvailable === false,
@@ -318,6 +319,7 @@ function OwnerMenuPage() {
                     categoryName={item.category}
                     item={item}
                     key={item.id}
+                    onEdit={() => handleEdit(item)}
                     onDelete={() => handleDelete(item)}
                   />
                 ))}

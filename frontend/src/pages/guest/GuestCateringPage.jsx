@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import api from '../../services/api';
 
 function GuestCateringPage() {
   const [eventName, setEventName] = useState('');
@@ -6,7 +7,9 @@ function GuestCateringPage() {
   const [tier, setTier] = useState('executive');
   const [useInstallments, setUseInstallments] = useState(true);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [schedule, setSchedule] = useState([]);
+  const [bookingRef, setBookingRef] = useState(null);
 
   const tierPrices = {
     standard: 15,
@@ -19,21 +22,40 @@ function GuestCateringPage() {
   const remaining = cost - deposit;
   const installmentAmount = remaining / 2;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Generate simulated payment dates
-    const date1 = new Date();
-    date1.setDate(date1.getDate() + 30);
-    const date2 = new Date();
-    date2.setDate(date2.getDate() + 60);
+    try {
+      setSubmitting(true);
 
-    setSchedule([
-      { label: 'Deposit due now (25%)', amount: `$${deposit.toFixed(2)}`, date: 'Today' },
-      { label: 'Installment #1 (37.5%)', amount: `$${installmentAmount.toFixed(2)}`, date: date1.toLocaleDateString() },
-      { label: 'Installment #2 (37.5%)', amount: `$${installmentAmount.toFixed(2)}`, date: date2.toLocaleDateString() }
-    ]);
-    setSubmitted(true);
+      const res = await api.post('/api/customer/catering', {
+        eventName,
+        totalAmount: cost,
+        depositAmount: deposit,
+        guestName: eventName ? `${eventName} Host` : 'Catering Client'
+      });
+
+      if (res.data?.data) {
+        setBookingRef(res.data.data);
+      }
+
+      // Generate simulated payment dates
+      const date1 = new Date();
+      date1.setDate(date1.getDate() + 30);
+      const date2 = new Date();
+      date2.setDate(date2.getDate() + 60);
+
+      setSchedule([
+        { label: 'Deposit paid now (25%)', amount: `$${deposit.toFixed(2)}`, date: 'Today' },
+        { label: 'Installment #1 (37.5%)', amount: `$${installmentAmount.toFixed(2)}`, date: date1.toLocaleDateString() },
+        { label: 'Installment #2 (37.5%)', amount: `$${installmentAmount.toFixed(2)}`, date: date2.toLocaleDateString() }
+      ]);
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Catering booking submission failed:', err);
+      alert('Failed to process catering booking. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

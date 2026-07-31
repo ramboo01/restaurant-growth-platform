@@ -98,11 +98,23 @@ async function listByRestaurant(request, response, next) {
   }
 }
 
+async function markAllRead(request, response, next) {
+  try {
+    const restaurantId = getAuthenticatedRestaurantId(request);
+    const userId = request.user?.id || null;
+    await markAllNotificationsAsRead(restaurantId, userId);
+    return sendSuccess(response, { statusCode: 200, message: 'All notifications marked as read successfully.', data: {} });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   create,
   list,
   getById,
   markRead,
+  markAllRead,
   remove,
   listByRestaurant
 };

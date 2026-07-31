@@ -13,9 +13,26 @@ const {
   belongsToAuthenticatedRestaurant
 } = require('../../utils/restaurantScope');
 
+const socketUtils = require('../../utils/socket');
+
 async function create(request, response, next) {
   try {
     const customer = await createCustomer(withAuthenticatedRestaurant(request));
+
+    try {
+      const io = socketUtils.getIO();
+      if (io) {
+        io.emit('newCustomer', { customer });
+        io.emit('customerCreated', { customer });
+        if (customer.restaurantId) {
+          io.to(`restaurant_${customer.restaurantId}`).emit('newCustomer', { customer });
+          io.to(`restaurant_${customer.restaurantId}`).emit('customerCreated', { customer });
+        }
+      }
+    } catch {
+      // socket fallback
+    }
+
     return sendSuccess(response, { statusCode: 201, message: 'Customer created successfully.', data: { customer } });
   } catch (error) {
     return next(error);

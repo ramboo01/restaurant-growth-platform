@@ -1,16 +1,16 @@
 import { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext.jsx';
+import { registerOwner } from '../../services/authService.js';
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { register, login } = useContext(AuthContext);
+  const { login } = useContext(AuthContext);
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'Owner',
-    restaurantId: ''
+    confirmPassword: ''
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -18,24 +18,27 @@ function RegisterPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
+
+    if (form.password !== form.confirmPassword) {
+      return setError('Passwords do not match.');
+    }
+    if (form.password.length < 6) {
+      return setError('Password must be at least 6 characters.');
+    }
+
     setSubmitting(true);
 
     try {
-      await register({
-        ...form,
-        restaurantId: form.restaurantId ? Number(form.restaurantId) : undefined
+      // Register as Owner using ownerRegister endpoint
+      await registerOwner({
+        name: form.name,
+        email: form.email,
+        password: form.password
       });
 
-      // Auto-login after registration
-      const loginRes = await login({ email: form.email, password: form.password });
-      const userRole = loginRes?.data?.user?.role || form.role;
-
-      let destination = '/owner';
-      if (userRole === 'Staff') destination = '/staff';
-      else if (userRole === 'Driver') destination = '/driver';
-      else if (userRole === 'Admin') destination = '/admin';
-
-      navigate(destination, { replace: true });
+      // Auto-login and navigate directly to Owner dashboard
+      await login({ email: form.email, password: form.password });
+      navigate('/owner', { replace: true });
     } catch (err) {
       const errorMsg = Array.isArray(err.response?.data?.errors)
         ? err.response.data.errors.join('. ')
@@ -49,14 +52,20 @@ function RegisterPage() {
   return (
     <div className="container py-5">
       <div className="row justify-content-center">
-        <div className="col-12 col-sm-10 col-md-8 col-lg-6">
+        <div className="col-12 col-sm-10 col-md-7 col-lg-5">
           <div className="card border-0 guest-info-card">
             <div className="card-body p-4 p-lg-5">
               <div className="text-center mb-4">
                 <div className="guest-brand-mark mx-auto mb-3" aria-hidden="true" style={{ width: 48, height: 48, fontSize: '1.25rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>R</div>
-                <p className="badge text-bg-warning mb-2">Internal Registration</p>
-                <h1 className="h4 mb-1">Create Staff / Owner Account</h1>
-                <p className="text-secondary small mb-0">This form is for restaurant owners, managers, staff, and drivers only. Customers should use <Link to="/signup">Guest Sign Up</Link>.</p>
+                <p className="badge text-bg-primary mb-2">Restaurant Owner Portal</p>
+                <h1 className="h4 mb-1">Create Owner Account</h1>
+                <p className="text-secondary small mb-0">
+                  Register your restaurant and get access to your owner dashboard.
+                  <br />
+                  <span className="text-muted" style={{ fontSize: '0.78rem' }}>
+                    Staff accounts are created from within your Owner Dashboard.
+                  </span>
+                </p>
               </div>
 
               {error ? (
@@ -67,47 +76,71 @@ function RegisterPage() {
               ) : null}
 
               <form onSubmit={handleSubmit}>
-                <div className="row g-3">
-                  <div className="col-12 col-md-6">
-                    <label className="form-label" htmlFor="regName">Full Name</label>
-                    <input className="form-control" id="regName" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} disabled={submitting} />
-                  </div>
-                  <div className="col-12 col-md-6">
-                    <label className="form-label" htmlFor="regEmail">Email Address</label>
-                    <input className="form-control" id="regEmail" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={submitting} />
-                  </div>
-                  <div className="col-12 col-md-6">
-                    <label className="form-label" htmlFor="regPassword">Password (Min. 6 chars)</label>
-                    <input className="form-control" id="regPassword" type="password" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} disabled={submitting} />
-                  </div>
-                  <div className="col-12 col-md-3">
-                    <label className="form-label" htmlFor="regRole">Role</label>
-                    <select className="form-select" id="regRole" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} disabled={submitting}>
-                      <option value="Owner">Owner</option>
-                      <option value="Manager">Manager</option>
-                      <option value="Staff">Staff (Kitchen)</option>
-                      <option value="Driver">Driver</option>
-                      <option value="Admin">Admin</option>
-                    </select>
-                  </div>
-                  <div className="col-12 col-md-3">
-                    <label className="form-label" htmlFor="regRestaurantId">Restaurant ID</label>
-                    <input className="form-control" id="regRestaurantId" type="number" placeholder="Auto" value={form.restaurantId} onChange={(e) => setForm({ ...form, restaurantId: e.target.value })} disabled={submitting} />
-                  </div>
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="regName">Full Name</label>
+                  <input
+                    className="form-control"
+                    id="regName"
+                    required
+                    placeholder="Your full name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="regEmail">Email Address</label>
+                  <input
+                    className="form-control"
+                    id="regEmail"
+                    type="email"
+                    required
+                    placeholder="owner@restaurant.com"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="regPassword">Password (Min. 6 chars)</label>
+                  <input
+                    className="form-control"
+                    id="regPassword"
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="Create a strong password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="form-label" htmlFor="regConfirmPassword">Confirm Password</label>
+                  <input
+                    className="form-control"
+                    id="regConfirmPassword"
+                    type="password"
+                    required
+                    placeholder="Re-enter your password"
+                    value={form.confirmPassword}
+                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                    disabled={submitting}
+                  />
                 </div>
 
-                <button className="btn btn-primary w-100 py-2 mt-4 mb-3" disabled={submitting} type="submit">
-                  {submitting ? 'Creating...' : 'Create Internal Account'}
+                <button className="btn btn-primary w-100 py-2 mb-3" disabled={submitting} type="submit">
+                  {submitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                      Creating Account...
+                    </>
+                  ) : 'Create Owner Account'}
                 </button>
 
-                <p className="text-center text-secondary small mb-2">
+                <p className="text-center text-secondary small mb-0">
                   Already have an account?{' '}
                   <Link to="/login">Login to Portal</Link>
-                </p>
-                <p className="text-center mb-0">
-                  <Link className="text-secondary small" to="/signin">
-                    ← Back to Customer Sign In
-                  </Link>
                 </p>
               </form>
             </div>

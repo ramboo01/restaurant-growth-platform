@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext.jsx';
+import PortalBar from '../components/navigation/PortalBar.jsx';
 
 function AdminLayout() {
   const navigate = useNavigate();
@@ -25,9 +26,18 @@ function AdminLayout() {
       label: 'Infrastructure & Security',
       items: [
         { to: '/admin/reports', label: 'Platform Reports & GMV', icon: 'bi-graph-up-arrow' },
+        { to: '/admin/ecosystem', label: 'Ecosystem & Channels Hub', icon: 'bi-arrow-repeat' },
         { to: '/admin/sync', label: 'Channel Sync Health', icon: 'bi-diagram-3' },
         { to: '/admin/monitoring', label: 'System Health Monitor', icon: 'bi-hdd-network' },
         { to: '/admin/security', label: 'Security & 2FA Governance', icon: 'bi-shield-lock-fill' },
+      ]
+    },
+    {
+      label: 'Compliance & Governance',
+      items: [
+        { to: '/admin/privacy-console', label: 'GDPR Privacy Console', icon: 'bi-person-lock' },
+        { to: '/admin/financial-compliance', label: 'Financial Settlements', icon: 'bi-bank' },
+        { to: '/admin/audit-logs', label: 'Platform Audit Log', icon: 'bi-journal-text' },
       ]
     },
     {
@@ -35,7 +45,6 @@ function AdminLayout() {
       items: [
         { to: '/admin/support', label: 'Support & Tickets', icon: 'bi-envelope-paper' },
         { to: '/admin/onboarding', label: 'Onboarding Specialist', icon: 'bi-box-arrow-in-right' },
-        { to: '/admin/audit', label: 'Platform Audit Log', icon: 'bi-journal-text' },
       ]
     }
   ];
@@ -78,6 +87,7 @@ function AdminLayout() {
         </div>
       </aside>
       <div className="app-layout-main flex-grow-1 d-flex flex-column bg-light">
+        <PortalBar />
         <header className="border-bottom bg-white px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center">
           <span className="fw-semibold text-dark">
             <i className="bi bi-lock-fill text-danger me-2"></i> Security Level: Root Admin Access

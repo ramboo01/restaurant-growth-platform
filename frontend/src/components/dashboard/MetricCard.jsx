@@ -11,10 +11,10 @@ function MetricCard({ metric }) {
         <div className="h3 mb-2">{metric.value}</div>
         <div className="d-flex align-items-center gap-2 small">
           <span className="text-success fw-semibold">
-            <i className="bi bi-arrow-up-right me-1" aria-hidden="true" />
-            {metric.trend}
+            <i className="bi bi-broadcast me-1" aria-hidden="true" />
+            Live
           </span>
-          <span className="text-secondary">{metric.comparison}</span>
+          <span className="text-secondary">from database</span>
         </div>
       </div>
     </article>

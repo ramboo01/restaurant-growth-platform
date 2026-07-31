@@ -1,7 +1,7 @@
 const { getDatabasePool } = require('../../config/database');
 const { parseListOptions, executePaginatedQuery } = require('../../utils/pagination');
 
-const ORDER_STATUSES = ['Pending', 'Accepted', 'Preparing', 'Ready', 'Out for Delivery', 'Completed', 'Cancelled'];
+const ORDER_STATUSES = ['Pending', 'Accepted', 'Preparing', 'Ready', 'Out for Delivery', 'Delivered', 'Completed', 'Cancelled'];
 const ORDER_SORT_MAP = {
   createdAt: 'created_at',
   totalAmount: 'total_amount',
@@ -85,6 +85,13 @@ async function createOrder(payload) {
   const order = await getOrderById(result.insertId);
 
   try {
+    const { syncCustomerOrder } = require('../customer/customer.service');
+    await syncCustomerOrder(order.restaurantId, order.customerName, order.customerPhone, '', order.totalAmount, new Date());
+  } catch (err) {
+    console.error('[CRM] Failed to sync customer on order creation:', err.message);
+  }
+
+  try {
     const { createNotification } = require('../notification/notification.service');
     const formattedAmount = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(order.totalAmount) || 0);
     await createNotification({
@@ -96,6 +103,32 @@ async function createOrder(payload) {
     });
   } catch (err) {
     console.error('[Notification] Failed to auto-create order notification:', err.message);
+  }
+
+  // Campaign Promo Code Redemption & Revenue Attribution Tracking
+  try {
+    const promoCode = payload.fulfillmentDetails?.promoCode || payload.fulfillmentDetails?.discountCode || payload.discountCode;
+    if (promoCode) {
+      const pool = getDatabasePool();
+      await pool.execute(
+        `UPDATE campaigns
+         SET conversions_count = conversions_count + 1,
+             revenue_generated = revenue_generated + ?
+         WHERE LOWER(discount_code) = LOWER(?) AND restaurant_id = ?`,
+        [order.totalAmount, promoCode.trim(), order.restaurantId]
+      );
+      console.log(`[Campaign] Attributed promo redemption "${promoCode}" to order ${order.orderNumber} ($${order.totalAmount})`);
+    }
+  } catch (err) {
+    console.error('[Campaign] Failed to track promo redemption:', err.message);
+  }
+
+  // Award Loyalty Points for order purchase (10 points per $1 spent)
+  try {
+    const { addLoyaltyPointsByPhone } = require('../loyalty/loyalty.service');
+    await addLoyaltyPointsByPhone(order.restaurantId, order.customerPhone, order.totalAmount, order.customerName);
+  } catch (err) {
+    console.error('[Loyalty] Failed to award points for order:', err.message);
   }
 
   try {

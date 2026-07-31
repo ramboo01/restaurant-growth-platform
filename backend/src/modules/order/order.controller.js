@@ -91,6 +91,14 @@ async function remove(request, response, next) {
       return sendError(response, { statusCode: 404, message: 'Order not found.' });
     }
 
+    try {
+      const socketUtils = require('../../utils/socket');
+      const io = socketUtils.getIO();
+      io.to(`restaurant_${order.restaurantId}`).emit('orderDeleted', { id: request.params.id, orderNumber: order.orderNumber });
+    } catch (socketErr) {
+      console.error('[Socket] Failed to emit orderDeleted event:', socketErr.message);
+    }
+
     return sendSuccess(response, { statusCode: 200, message: 'Order deleted successfully.', data: {} });
   } catch (error) {
     return next(error);

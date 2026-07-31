@@ -30,6 +30,9 @@ const uploadRoutes = require('./modules/upload/upload.routes');
 const publicRoutes = require('./modules/public/public.routes');
 const reviewRoutes = require('./modules/review/review.routes');
 const seoRoutes = require('./modules/seo/seo.routes');
+const deliveryRoutes = require('./modules/delivery/delivery.routes');
+const aiRoutes = require('./modules/ai/ai.routes');
+const franchiseRoutes = require('./modules/franchise/franchise.routes');
 
 const app = express();
 const allowedOrigins = FRONTEND_URL
@@ -84,15 +87,72 @@ app.use('/api/staff', authorize('Admin', 'Owner'), verifyRestaurantOwnership, st
 app.use('/api/drivers', authorize('Owner', 'Driver'), verifyRestaurantOwnership, driverRoutes);
 app.use('/api/inventory', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, inventoryRoutes);
 app.use('/api/loyalty', authorize('Admin', 'Owner', 'Manager'), loyaltyRoutes);
-app.use('/api/analytics', authorize('Admin', 'Owner'), verifyRestaurantOwnership, analyticsRoutes);
+app.use('/api/analytics', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, analyticsRoutes);
 app.use('/api/customers', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, customerRoutes);
-app.use('/api/notifications', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, notificationRoutes);
+app.use('/api/notifications', verifyRestaurantOwnership, notificationRoutes);
 app.use('/api/reports', authorize('Admin', 'Owner'), verifyRestaurantOwnership, reportRoutes);
 app.use('/api/suppliers', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, supplierRoutes);
 app.use('/api/campaigns', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, campaignRoutes);
 app.use('/api/reviews', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, reviewRoutes);
 app.use('/api/seo', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, seoRoutes);
+app.use('/api/delivery', deliveryRoutes);
+app.use('/api/ai', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, aiRoutes);
+app.use('/api/franchise', authorize('Admin', 'Owner'), franchiseRoutes);
 app.use('/api/upload', uploadRoutes);
+
+// Customer-facing notification endpoints (no restaurant ownership required)
+const customerNotificationRoutes = require('./modules/customerNotification/customerNotification.routes');
+app.use('/api/customer/notifications', customerNotificationRoutes);
+
+// Site Settings CMS (OWN-007)
+const siteSettingsRoutes = require('./modules/siteSettings/siteSettings.routes');
+app.use('/api/site-settings', siteSettingsRoutes);
+
+// Guest Privacy Preferences (GST-009) & Data Export (OWN-030)
+const guestPrivacyController = require('./modules/customer/guestPrivacy.controller');
+const cateringController = require('./modules/customer/catering.controller');
+app.get('/api/customer/preferences', authorize('Customer', 'Owner', 'Admin'), guestPrivacyController.getGuestPreferences);
+app.put('/api/customer/preferences', authorize('Customer', 'Owner', 'Admin'), guestPrivacyController.updateGuestPreferences);
+app.post('/api/customer/privacy/erasure-request', authorize('Customer', 'Owner', 'Admin'), guestPrivacyController.requestErasure);
+app.get('/api/owner/data-export', authorize('Owner', 'Admin'), guestPrivacyController.exportRestaurantData);
+
+// Catering Installment Bookings (GST-008)
+app.post('/api/customer/catering', cateringController.createCateringBooking);
+app.get('/api/customer/catering', cateringController.getCateringBookings);
+
+// Shifts & Scheduling (OWN-015, OWN-016, ST-006)
+const shiftsController = require('./modules/shifts/shifts.controller');
+app.get('/api/shifts/owner', shiftsController.getOwnerShifts);
+app.post('/api/shifts/owner', shiftsController.createShift);
+app.get('/api/shifts/open', shiftsController.getOpenShifts);
+app.post('/api/shifts/claim/:id', shiftsController.claimShift);
+
+// Franchise Compliance & Price Overrides (OWN-024)
+const franchiseComplianceController = require('./modules/franchise/franchiseCompliance.controller');
+app.get('/api/franchise/compliance-data', franchiseComplianceController.getFranchiseComplianceData);
+app.post('/api/franchise/price-override/action', franchiseComplianceController.handlePriceOverrideAction);
+
+// Platform Admin Endpoints (ADM-001, ADM-002, ADM-005, ADM-007)
+const adminController = require('./modules/admin/admin.controller');
+app.get('/api/admin/privacy/requests', adminController.getPrivacyRequests);
+app.post('/api/admin/privacy/process-erasure', adminController.processErasureRequest);
+app.post('/api/admin/privacy/merge-profiles', adminController.mergeProfiles);
+app.get('/api/admin/financial/payouts', adminController.getStorePayouts);
+app.post('/api/admin/financial/release-payout', adminController.releasePayout);
+app.get('/api/admin/audit-logs', adminController.getAuditLogs);
+
+// Sprint 5 Endpoints (ADM-003, ADM-004, ADM-006, ST-001, ST-009, ST-010)
+const sprint5Controller = require('./modules/admin/sprint5.controller');
+app.get('/api/admin/channels', sprint5Controller.getChannels);
+app.post('/api/admin/channels/sync', sprint5Controller.forceSyncChannel);
+app.get('/api/admin/franchise-apps', sprint5Controller.getFranchiseApplications);
+app.post('/api/admin/franchise-apps/action', sprint5Controller.handleFranchiseAppAction);
+app.post('/api/staff/instant-payout/request', sprint5Controller.requestInstantPayout);
+
+// Public SEO Metadata & Sitemap XML endpoints
+const seoController = require('./modules/seo/seo.controller');
+app.get('/api/public/seo', seoController.getPublicSeoHandler);
+app.get('/sitemap.xml', seoController.getSitemapHandler);
 app.get('/api/restaurants/:restaurantId/menu', authorize('Owner', 'Manager'), verifyRestaurantOwnership, async (req, res, next) => {
   try {
     const { getMenuItemsByRestaurantId } = require('./modules/menu/menu.service');

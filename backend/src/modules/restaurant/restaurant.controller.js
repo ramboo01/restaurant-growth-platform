@@ -9,7 +9,8 @@ const { sendSuccess, sendError } = require('../../utils/apiResponse');
 
 async function create(request, response, next) {
   try {
-    const restaurant = await createRestaurant(request.body);
+    const userId = request.user?.sub || request.user?.id;
+    const restaurant = await createRestaurant(request.body, userId);
     return sendSuccess(response, { statusCode: 201, message: 'Restaurant created successfully.', data: { restaurant } });
   } catch (error) {
     return next(error);

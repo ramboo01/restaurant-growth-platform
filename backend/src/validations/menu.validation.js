@@ -7,7 +7,7 @@ const menuSchema = Joi.object({
   category: Joi.string().trim().required(),
   price: Joi.number().positive().required(),
   imageUrl: Joi.string().trim().allow('', null).optional(),
-  isAvailable: Joi.boolean().optional()
+  isAvailable: Joi.boolean().truthy(1, '1', 'true').falsy(0, '0', 'false').optional()
 });
 
 module.exports = {

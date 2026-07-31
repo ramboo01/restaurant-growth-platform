@@ -2,6 +2,8 @@ const { verifyJwt } = require('../modules/auth/jwt.middleware');
 const { sendError } = require('../utils/apiResponse');
 
 function authorize(...allowedRoles) {
+  const normalizedAllowed = allowedRoles.map((role) => String(role).trim().toLowerCase());
+
   return [
     verifyJwt,
     (request, response, next) => {
@@ -14,7 +16,9 @@ function authorize(...allowedRoles) {
         });
       }
 
-      if (!allowedRoles.includes(userRole)) {
+      const normalizedUserRole = String(userRole).trim().toLowerCase();
+
+      if (!normalizedAllowed.includes(normalizedUserRole)) {
         return sendError(response, {
           statusCode: 403,
           message: 'Forbidden. Insufficient permissions.'

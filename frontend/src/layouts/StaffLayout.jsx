@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext.jsx';
+import PortalBar from '../components/navigation/PortalBar.jsx';
 
 function StaffLayout() {
   const navigate = useNavigate();
@@ -13,15 +14,19 @@ function StaffLayout() {
 
   const navLinks = [
     { to: '/staff', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
-    { to: '/staff/orders', label: 'Order Queue', icon: 'bi-receipt' },
-    { to: '/staff/kitchen', label: 'Kitchen Display', icon: 'bi-fire' },
-    { to: '/staff/86-board', label: "86'd Items", icon: 'bi-slash-circle' },
+    { to: '/staff/orders', label: 'Orders', icon: 'bi-receipt' },
+    { to: '/staff/kitchen', label: 'Kitchen', icon: 'bi-fire' },
+    { to: '/staff/86-board', label: "86'd", icon: 'bi-slash-circle' },
     { to: '/staff/guest-lookup', label: 'Guest Lookup', icon: 'bi-person-search' },
-    { to: '/staff/inventory', label: 'Stock Counts', icon: 'bi-boxes' },
+    { to: '/staff/pos-loyalty', label: 'POS Loyalty', icon: 'bi-credit-card-2-front' },
+    { to: '/staff/inventory', label: 'Stock', icon: 'bi-boxes' },
+    { to: '/staff/availability', label: 'Shifts', icon: 'bi-calendar-check' },
+    { to: '/staff/performance-payout', label: 'My Payout', icon: 'bi-cash-stack' },
   ];
 
   return (
     <div className="app-min-vh d-flex flex-column">
+      <PortalBar />
       <header className="bg-dark text-white px-3 px-lg-4 py-3 shadow-sm">
         <div className="d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center gap-3">

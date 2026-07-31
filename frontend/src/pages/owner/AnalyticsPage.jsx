@@ -13,6 +13,49 @@ function AnalyticsPage() {
   const [reportData, setReportData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Custom interactive chart states and helpers
+  const [hoveredRevIndex, setHoveredRevIndex] = useState(null);
+  const [hoveredOrdIndex, setHoveredOrdIndex] = useState(null);
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(Number(value) || 0);
+  };
+
+  const getChartLabel = (index, totalLength, isFullFormat = false) => {
+    if (dateFilter === 'Today') {
+      const hour = index;
+      const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+      const ampm = hour < 12 ? 'AM' : 'PM';
+      if (isFullFormat) {
+        return `Today, ${displayHour} ${ampm}`;
+      }
+      return index % 3 === 0 ? `${displayHour} ${ampm}` : '';
+    }
+    if (dateFilter === 'This Month') {
+      const d = new Date();
+      d.setDate(d.getDate() - (totalLength - 1 - index));
+      if (isFullFormat) {
+        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      }
+      return index % 5 === 0 || index === totalLength - 1 
+        ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) 
+        : '';
+    }
+    // This Week
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const d = new Date();
+    d.setDate(d.getDate() - (totalLength - 1 - index));
+    if (isFullFormat) {
+      return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+    return days[d.getDay()];
+  };
 
   const fetchReports = async (filter) => {
     const period = PERIOD_MAP[filter] || 'week';
@@ -148,51 +191,197 @@ function AnalyticsPage() {
         </>
       )}
 
+      {/* Interactive Custom Charts */}
       <div className="row g-4 mb-4">
+        {/* Revenue Trend Chart */}
         <div className="col-12 col-xl-6">
           <div className="card border-0 guest-info-card h-100">
             <div className="card-body p-4">
-              <h2 className="h5 mb-3">Revenue Trend</h2>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h2 className="h5 mb-0">Revenue Trend</h2>
+                <span className="badge bg-light text-secondary border">Completed Sales</span>
+              </div>
               {!isLoading && !error && (
                 revenueBars.length ? (
-                  <div className="d-flex align-items-end gap-2" style={{ minHeight: '180px' }}>
-                    {revenueBars.map((value, index) => (
-                      <div className="flex-fill text-center" key={`rev-${index}`}>
-                        <div
-                          className="rounded-top bg-primary mx-auto"
-                          style={{ height: `${(value / maxRevenue) * 160}px`, maxWidth: '28px' }}
-                          title={`Revenue ${value}`}
-                        />
-                      </div>
-                    ))}
+                  <div className="position-relative mt-4">
+                    {/* Y-axis and Grid lines */}
+                    <div className="position-absolute w-100 h-100 d-flex flex-column justify-content-between pointer-events-none" style={{ height: '180px', zIndex: 0 }}>
+                      {[1, 0.75, 0.5, 0.25, 0].map((ratio) => (
+                        <div className="d-flex align-items-center w-100" key={ratio} style={{ height: '0' }}>
+                          <span className="text-secondary small fw-semibold pe-2" style={{ width: '60px', fontSize: '0.75rem', textAlign: 'right' }}>
+                            {formatCurrency(maxRevenue * ratio)}
+                          </span>
+                          <div className="flex-grow-1 border-bottom border-secondary border-opacity-10" style={{ borderStyle: 'dashed' }}></div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Chart Bars Area */}
+                    <div className="d-flex align-items-end gap-1 position-relative" style={{ height: '180px', marginLeft: '60px', zIndex: 1 }}>
+                      {revenueBars.map((value, index) => {
+                        const isHovered = hoveredRevIndex === index;
+                        return (
+                          <div 
+                            className="flex-fill text-center position-relative h-100 d-flex align-items-end" 
+                            key={`rev-${index}`}
+                            onMouseEnter={() => setHoveredRevIndex(index)}
+                            onMouseLeave={() => setHoveredRevIndex(null)}
+                          >
+                            <div
+                              className={`rounded-top mx-auto ${isHovered ? 'bg-primary shadow-sm' : 'bg-primary bg-opacity-75'}`}
+                              style={{ 
+                                height: `${(value / maxRevenue) * 100}%`, 
+                                width: dateFilter === 'This Month' ? '70%' : '24px', 
+                                minWidth: '4px',
+                                transition: 'all 0.15s ease-in-out',
+                                cursor: 'pointer'
+                              }}
+                            />
+                            {/* Hover Tooltip */}
+                            {isHovered && (
+                              <div 
+                                className="position-absolute bg-dark text-white rounded px-2 py-1 text-center shadow-lg pointer-events-none"
+                                style={{ 
+                                  bottom: `${((value / maxRevenue) * 100) + 5}%`, 
+                                  left: '50%', 
+                                  transform: 'translateX(-50%)', 
+                                  zIndex: 100,
+                                  fontSize: '0.75rem',
+                                  whiteSpace: 'nowrap',
+                                  animation: 'fadeIn 0.1s ease-out'
+                                }}
+                              >
+                                <div className="fw-semibold">{formatCurrency(value)}</div>
+                                <div className="text-white-50" style={{ fontSize: '0.65rem' }}>
+                                  {getChartLabel(index, revenueBars.length, true)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* X-axis Labels */}
+                    <div className="d-flex align-items-start mt-2" style={{ marginLeft: '60px' }}>
+                      {revenueBars.map((_, index) => {
+                        const label = getChartLabel(index, revenueBars.length, false);
+                        return (
+                          <div 
+                            className="flex-fill text-center text-secondary small fw-medium" 
+                            key={`rev-lbl-${index}`}
+                            style={{ 
+                              fontSize: dateFilter === 'This Month' ? '0.65rem' : '0.75rem',
+                              lineHeight: '1.2'
+                            }}
+                          >
+                            {label}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 ) : (
-                  <div className="text-secondary">No revenue data available.</div>
+                  <div className="text-secondary text-center py-5">No revenue data available.</div>
                 )
               )}
             </div>
           </div>
         </div>
 
+        {/* Orders Trend Chart */}
         <div className="col-12 col-xl-6">
           <div className="card border-0 guest-info-card h-100">
             <div className="card-body p-4">
-              <h2 className="h5 mb-3">Orders Trend</h2>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h2 className="h5 mb-0">Orders Trend</h2>
+                <span className="badge bg-light text-secondary border">Completed Orders</span>
+              </div>
               {!isLoading && !error && (
                 orderBars.length ? (
-                  <div className="d-flex align-items-end gap-2" style={{ minHeight: '180px' }}>
-                    {orderBars.map((value, index) => (
-                      <div className="flex-fill text-center" key={`ord-${index}`}>
-                        <div
-                          className="rounded-top bg-success mx-auto"
-                          style={{ height: `${(value / maxOrders) * 160}px`, maxWidth: '28px' }}
-                          title={`Orders ${value}`}
-                        />
-                      </div>
-                    ))}
+                  <div className="position-relative mt-4">
+                    {/* Y-axis and Grid lines */}
+                    <div className="position-absolute w-100 h-100 d-flex flex-column justify-content-between pointer-events-none" style={{ height: '180px', zIndex: 0 }}>
+                      {[1, 0.75, 0.5, 0.25, 0].map((ratio) => {
+                        const val = Math.round(maxOrders * ratio);
+                        return (
+                          <div className="d-flex align-items-center w-100" key={ratio} style={{ height: '0' }}>
+                            <span className="text-secondary small fw-semibold pe-2" style={{ width: '50px', fontSize: '0.75rem', textAlign: 'right' }}>
+                              {val}
+                            </span>
+                            <div className="flex-grow-1 border-bottom border-secondary border-opacity-10" style={{ borderStyle: 'dashed' }}></div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Chart Bars Area */}
+                    <div className="d-flex align-items-end gap-1 position-relative" style={{ height: '180px', marginLeft: '50px', zIndex: 1 }}>
+                      {orderBars.map((value, index) => {
+                        const isHovered = hoveredOrdIndex === index;
+                        return (
+                          <div 
+                            className="flex-fill text-center position-relative h-100 d-flex align-items-end" 
+                            key={`ord-${index}`}
+                            onMouseEnter={() => setHoveredOrdIndex(index)}
+                            onMouseLeave={() => setHoveredOrdIndex(null)}
+                          >
+                            <div
+                              className={`rounded-top mx-auto ${isHovered ? 'bg-success shadow-sm' : 'bg-success bg-opacity-75'}`}
+                              style={{ 
+                                height: `${(value / maxOrders) * 100}%`, 
+                                width: dateFilter === 'This Month' ? '70%' : '24px', 
+                                minWidth: '4px',
+                                transition: 'all 0.15s ease-in-out',
+                                cursor: 'pointer'
+                              }}
+                            />
+                            {/* Hover Tooltip */}
+                            {isHovered && (
+                              <div 
+                                className="position-absolute bg-dark text-white rounded px-2 py-1 text-center shadow-lg pointer-events-none"
+                                style={{ 
+                                  bottom: `${((value / maxOrders) * 100) + 5}%`, 
+                                  left: '50%', 
+                                  transform: 'translateX(-50%)', 
+                                  zIndex: 100,
+                                  fontSize: '0.75rem',
+                                  whiteSpace: 'nowrap',
+                                  animation: 'fadeIn 0.1s ease-out'
+                                }}
+                              >
+                                <div className="fw-semibold">{value} order{value !== 1 ? 's' : ''}</div>
+                                <div className="text-white-50" style={{ fontSize: '0.65rem' }}>
+                                  {getChartLabel(index, orderBars.length, true)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* X-axis Labels */}
+                    <div className="d-flex align-items-start mt-2" style={{ marginLeft: '50px' }}>
+                      {orderBars.map((_, index) => {
+                        const label = getChartLabel(index, orderBars.length, false);
+                        return (
+                          <div 
+                            className="flex-fill text-center text-secondary small fw-medium" 
+                            key={`ord-lbl-${index}`}
+                            style={{ 
+                              fontSize: dateFilter === 'This Month' ? '0.65rem' : '0.75rem',
+                              lineHeight: '1.2'
+                            }}
+                          >
+                            {label}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 ) : (
-                  <div className="text-secondary">No orders data available.</div>
+                  <div className="text-secondary text-center py-5">No orders data available.</div>
                 )
               )}
             </div>

@@ -1,13 +1,17 @@
 import { useContext, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext.jsx';
 
 function GuestSignInPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useContext(AuthContext);
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Where user was trying to go before being redirected to signin
+  const redirectTo = location.state?.from?.pathname || '/';
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -29,20 +33,20 @@ function GuestSignInPage() {
       const loggedUser = response?.data?.user;
       const userRole = loggedUser?.role;
 
-      // Customer goes to storefront, internal roles go to their dashboards
-      if (userRole === 'Customer') {
-        navigate('/', { replace: true });
-      } else if (userRole === 'Owner' || userRole === 'Manager') {
-        navigate('/owner', { replace: true });
-      } else if (userRole === 'Staff') {
-        navigate('/staff', { replace: true });
-      } else if (userRole === 'Driver') {
-        navigate('/driver', { replace: true });
-      } else if (userRole === 'Admin') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/', { replace: true });
+      // ❌ Block non-customer roles from using the customer sign-in page
+      if (userRole && userRole !== 'Customer') {
+        // Log them out immediately so their session is cleared
+        localStorage.removeItem('jwt');
+        localStorage.removeItem('user');
+        setError(
+          `This sign-in is for customers only. Your account has the role "${userRole}". Please use the Staff / Owner Portal below.`
+        );
+        setSubmitting(false);
+        return;
       }
+
+      // ✅ Customer: go back to what they were trying to access
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Sign in failed.';
       setError(errorMsg);
@@ -118,11 +122,18 @@ function GuestSignInPage() {
                   Don't have an account?{' '}
                   <Link to="/signup">Create account</Link>
                 </p>
-                <p className="text-center mb-0">
-                  <Link className="text-secondary small" to="/login">
-                    Staff / Owner Portal →
+
+                <div className="text-center mt-3">
+                  <div className="text-muted small mb-2">— or —</div>
+                  <Link
+                    to="/"
+                    className="btn btn-outline-secondary btn-sm w-100"
+                    replace
+                  >
+                    <i className="bi bi-eye me-1"></i>
+                    Browse Menu Without Signing In
                   </Link>
-                </p>
+                </div>
               </form>
             </div>
           </div>

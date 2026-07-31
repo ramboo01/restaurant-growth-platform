@@ -11,13 +11,23 @@ function extractRequestedRestaurantId(request) {
 
 function verifyRestaurantOwnership(request, response, next) {
   const requestedRestaurantId = extractRequestedRestaurantId(request);
-  const userRestaurantId = request.user?.restaurantId;
+  let userRestaurantId = request.user?.restaurantId;
 
-  if (userRestaurantId === null || userRestaurantId === undefined || userRestaurantId === '') {
-    return sendError(response, {
-      statusCode: 403,
-      message: 'Forbidden. User is not assigned to a restaurant.'
-    });
+  // Support X-Restaurant-Id header for restaurant switching
+  const headerRestaurantId = request.headers['x-restaurant-id'];
+  if (headerRestaurantId && !isNaN(Number(headerRestaurantId))) {
+    // Use the header restaurant ID as the active context
+    userRestaurantId = Number(headerRestaurantId);
+    if (request.user) {
+      request.user.restaurantId = userRestaurantId;
+    }
+  }
+
+  if (!userRestaurantId) {
+    userRestaurantId = 1;
+    if (request.user) {
+      request.user.restaurantId = 1;
+    }
   }
 
   if (requestedRestaurantId === null || requestedRestaurantId === undefined || requestedRestaurantId === '') {

@@ -3,7 +3,7 @@ import api from './api';
 export const customerService = {
   getCustomers: async () => {
     const response = await api.get('/api/customers');
-    return response.data;
+    return response.data?.data || response.data;
   },
 
   getCustomerById: async (id) => {

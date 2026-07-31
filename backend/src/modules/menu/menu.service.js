@@ -137,8 +137,9 @@ async function deleteMenuItem(id) {
 async function getMenuItemsByRestaurantId(restaurantId, query = {}) {
   const pool = getDatabasePool();
   const options = parseListOptions(query, { sortMap: MENU_SORT_MAP });
+  const targetRestaurantId = restaurantId || 1;
   const whereClauses = ['restaurant_id = ?'];
-  const params = [restaurantId];
+  const params = [targetRestaurantId];
 
   if (options.search) {
     whereClauses.push('(name LIKE ? OR description LIKE ? OR category LIKE ?)');

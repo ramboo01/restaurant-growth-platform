@@ -9,7 +9,7 @@ const statusTimeline = [
   'Preparing',
   'Ready',
   'Out for Delivery',
-  'Completed'
+  'Delivered'
 ];
 
 const statusLabels = {
@@ -18,6 +18,7 @@ const statusLabels = {
   'Preparing': 'Preparing',
   'Ready': 'Ready',
   'Out for Delivery': 'Out for Delivery',
+  'Delivered': 'Delivered',
   'Completed': 'Delivered'
 };
 
@@ -67,7 +68,8 @@ function GuestOrderTrackingPage() {
         const data = await trackOrder(orderId);
         setOrder(prev => {
           if (!prev) return data;
-          if (prev.orderStatus !== data.orderStatus) {
+          const newStatus = data.orderStatus || data.order_status;
+          if (prev.orderStatus !== newStatus) {
             return data;
           }
           return prev;
@@ -123,8 +125,15 @@ function GuestOrderTrackingPage() {
 
   const currentStatusIndex = useMemo(() => {
     if (!order) return 0;
-    const idx = statusTimeline.indexOf(order.orderStatus);
+    let status = order.orderStatus;
+    if (status === 'Completed') status = 'Delivered';
+    const idx = statusTimeline.indexOf(status);
     return idx >= 0 ? idx : 0;
+  }, [order]);
+
+  const isDelivered = useMemo(() => {
+    if (!order) return false;
+    return order.orderStatus === 'Delivered' || order.orderStatus === 'Completed';
   }, [order]);
 
   const progressValue = useMemo(() => {
@@ -176,36 +185,48 @@ function GuestOrderTrackingPage() {
                   <p className="text-secondary small mb-1">Current Status</p>
                   <h2 className="h5 mb-0">{statusLabels[order.orderStatus] || order.orderStatus}</h2>
                 </div>
-                <span className="badge text-bg-success">
-                  {order.orderStatus === 'Completed' ? 'Delivered' : 'In Progress'}
+                <span className={`badge ${isDelivered ? 'text-bg-success' : order.orderStatus === 'Cancelled' ? 'text-bg-danger' : 'text-bg-primary'}`}>
+                  {isDelivered ? 'Delivered' : order.orderStatus === 'Cancelled' ? 'Cancelled' : 'In Progress'}
                 </span>
               </div>
 
-              {/* Delivery OTP Handshake Badge */}
-              <div className="bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 p-3 mb-3 d-flex align-items-center justify-content-between">
-                <div className="d-flex align-items-center gap-3">
-                  <div className="bg-primary text-white p-2 rounded-circle">
-                    <i className="bi bi-shield-lock-fill fs-5"></i>
+              {/* Delivery Security PIN / Completion Banner */}
+              {isDelivered ? (
+                <div className="bg-success bg-opacity-10 border border-success border-opacity-25 rounded-3 p-3 mb-4 d-flex align-items-center gap-3 text-success">
+                  <div className="bg-success text-white p-2 rounded-circle">
+                    <i className="bi bi-check-circle-fill fs-5"></i>
                   </div>
                   <div>
-                    <div className="fw-bold text-dark small">Your Delivery Security PIN</div>
-                    <div className="text-muted extra-small">Give this 4-digit PIN to your delivery driver upon handoff.</div>
+                    <div className="fw-bold small">Order Delivered Successfully!</div>
+                    <div className="extra-small text-success text-opacity-75">Thank you for ordering with us. Enjoy your meal!</div>
                   </div>
                 </div>
-                <div className="badge bg-primary fs-5 px-3 py-2 text-white font-monospace">
-                  {order.deliveryOtp || order.delivery_otp || '1234'}
+              ) : (
+                <div className="bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 p-3 mb-4 d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="bg-primary text-white p-2 rounded-circle">
+                      <i className="bi bi-shield-lock-fill fs-5"></i>
+                    </div>
+                    <div>
+                      <div className="fw-bold text-dark small">Your Delivery Security PIN</div>
+                      <div className="text-muted extra-small">Give this 4-digit PIN to your delivery driver upon handoff.</div>
+                    </div>
+                  </div>
+                  <div className="badge bg-primary fs-5 px-3 py-2 text-white font-monospace">
+                    {order.deliveryOtp || order.delivery_otp || '1234'}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="progress mb-4" role="progressbar" aria-label="Order progress" aria-valuenow={progressValue} aria-valuemin="0" aria-valuemax="100">
-                <div className="progress-bar" style={{ width: `${progressValue}%` }} />
+              <div className="progress mb-4" role="progressbar" aria-label="Order progress" aria-valuenow={progressValue} aria-valuemin="0" aria-valuemax="100" style={{ height: '8px' }}>
+                <div className={`progress-bar ${isDelivered ? 'bg-success' : 'bg-primary'}`} style={{ width: `${progressValue}%` }} />
               </div>
 
               <div className="vstack gap-3">
                 {statusTimeline.map((status, index) => (
                   <div className="d-flex align-items-start gap-3" key={status}>
-                    <span className={`badge rounded-pill ${index <= currentStatusIndex ? 'text-bg-dark' : 'text-bg-light border'}`}>
-                      {index + 1}
+                    <span className={`badge rounded-pill ${index <= currentStatusIndex ? 'text-bg-success' : 'text-bg-light border text-muted'}`}>
+                      {index <= currentStatusIndex ? <i className="bi bi-check-lg" /> : index + 1}
                     </span>
                     <div>
                       <p className="fw-semibold mb-1">{statusLabels[status] || status}</p>
@@ -213,7 +234,7 @@ function GuestOrderTrackingPage() {
                         {index < currentStatusIndex
                           ? 'Completed'
                           : index === currentStatusIndex
-                            ? 'Current step'
+                            ? isDelivered ? 'Completed' : 'Current step'
                             : 'Upcoming'}
                       </p>
                     </div>

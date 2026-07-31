@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { menuChannels } from '../../data/menuData.js';
 import { formatSyncStatus } from './SyncHealthSummary.jsx';
+import { getImageUrl } from '../../utils/imageUtils.js';
 
 function getSyncSummary(channels) {
   const states = menuChannels.map((channel) => channels[channel]?.status ?? 'pending');
@@ -14,15 +15,20 @@ function getSyncSummary(channels) {
   };
 }
 
-function MenuItemCard({ item, categoryName, onDelete }) {
+function MenuItemCard({ item, categoryName, onEdit, onDelete }) {
   const sync = getSyncSummary(item.channels);
+  const imgUrl = getImageUrl(item.imageUrl);
 
   return (
     <article className="card border-0 owner-card menu-item-card">
       <div className="card-body">
         <div className="d-flex flex-column flex-lg-row gap-3">
-          <div className="menu-item-visual" aria-hidden="true">
-            {item.imagePlaceholder}
+          <div className="menu-item-visual overflow-hidden p-0" aria-hidden="true">
+            {imgUrl ? (
+              <img src={imgUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              item.imagePlaceholder
+            )}
           </div>
           <div className="flex-grow-1">
             <div className="d-flex flex-column flex-xl-row justify-content-between gap-2">
@@ -36,7 +42,7 @@ function MenuItemCard({ item, categoryName, onDelete }) {
                 <p className="text-secondary small mb-2">{item.description}</p>
               </div>
               <div className="text-xl-end">
-                <div className="fw-semibold">${item.basePrice.toFixed(2)}</div>
+                <div className="fw-semibold">${(item.basePrice || item.price || 0).toFixed(2)}</div>
                 <div className="text-secondary small">{categoryName}</div>
               </div>
             </div>
@@ -62,9 +68,13 @@ function MenuItemCard({ item, categoryName, onDelete }) {
                 {sync.state !== 'synced' ? (
                   <span className="text-secondary small">{formatSyncStatus(sync.state)} sync state</span>
                 ) : null}
-                <Link className="btn btn-sm btn-outline-primary" to={`/owner/menu/items/${item.id}`}>
+                <button
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={() => (onEdit ? onEdit(item) : null)}
+                  type="button"
+                >
                   Edit item
-                </Link>
+                </button>
                 <button className="btn btn-sm btn-outline-danger" onClick={() => onDelete(item)} type="button">
                   Delete
                 </button>

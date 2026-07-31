@@ -138,7 +138,7 @@ const { getDatabasePool } = require('../../config/database');
 // Check loyalty points by phone & restaurantId
 router.get('/loyalty/check', async (req, res, next) => {
   try {
-    const { phone, restaurantId } = req.query;
+    const { phone, restaurantId, customerName } = req.query;
     if (!phone || !restaurantId) {
       return sendError(res, {
         statusCode: 400,
@@ -146,26 +146,92 @@ router.get('/loyalty/check', async (req, res, next) => {
       });
     }
 
-    const [rows] = await getDatabasePool().execute(
+    const trimmedPhone = phone.trim();
+    const pool = getDatabasePool();
+
+    let [rows] = await pool.execute(
       `SELECT id, customer_name AS customerName, phone, points, tier, joined_at AS joinedAt
        FROM loyalty_members
        WHERE restaurant_id = ? AND phone = ?
        LIMIT 1`,
-      [restaurantId, phone.trim()]
+      [restaurantId, trimmedPhone]
     );
 
     if (rows.length === 0) {
-      return sendSuccess(res, {
-        statusCode: 200,
-        message: 'No loyalty member profile found',
-        data: null
-      });
+      const name = customerName ? customerName.trim() : 'Valued Guest';
+      await pool.execute(
+        `INSERT INTO loyalty_members (restaurant_id, customer_name, phone, points, tier)
+         VALUES (?, ?, ?, 0, 'Bronze')`,
+        [restaurantId, name, trimmedPhone]
+      );
+
+      [rows] = await pool.execute(
+        `SELECT id, customer_name AS customerName, phone, points, tier, joined_at AS joinedAt
+         FROM loyalty_members
+         WHERE restaurant_id = ? AND phone = ?
+         LIMIT 1`,
+        [restaurantId, trimmedPhone]
+      );
     }
 
     return sendSuccess(res, {
       statusCode: 200,
       message: 'Loyalty member profile fetched successfully',
       data: rows[0]
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Redeem loyalty points publicly
+router.post('/loyalty/redeem', async (req, res, next) => {
+  try {
+    const { phone, restaurantId, points } = req.body;
+    if (!phone || !restaurantId || points === undefined) {
+      return sendError(res, {
+        statusCode: 400,
+        message: 'Missing phone, restaurantId, or points in request body'
+      });
+    }
+
+    const pool = getDatabasePool();
+    const trimmedPhone = phone.trim();
+
+    const [members] = await pool.execute(
+      `SELECT id, points FROM loyalty_members WHERE restaurant_id = ? AND phone = ? LIMIT 1`,
+      [restaurantId, trimmedPhone]
+    );
+
+    if (members.length === 0) {
+      return sendError(res, {
+        statusCode: 404,
+        message: 'Loyalty member profile not found'
+      });
+    }
+
+    const member = members[0];
+    if (member.points < points) {
+      return sendError(res, {
+        statusCode: 400,
+        message: 'Insufficient points to redeem this reward'
+      });
+    }
+
+    const newPoints = member.points - points;
+    let tier = 'Bronze';
+    if (newPoints >= 1000) tier = 'Gold VIP';
+    else if (newPoints >= 500) tier = 'Silver';
+
+    await pool.execute(
+      `UPDATE loyalty_members SET points = ?, tier = ? WHERE id = ?`,
+      [newPoints, tier, member.id]
+    );
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: 'Points redeemed successfully',
+      data: { id: member.id, points: newPoints, tier }
     });
   } catch (error) {
     return next(error);
@@ -184,7 +250,7 @@ router.get('/loyalty/rewards', async (req, res, next) => {
     }
 
     const [rows] = await getDatabasePool().execute(
-      `SELECT id, name, description, points_required AS pointsRequired, status
+      `SELECT id, name, description, points_required AS pointsRequired, COALESCE(discount_amount, ROUND(points_required * 0.10, 2)) AS discountAmount, status
        FROM loyalty_rewards
        WHERE restaurant_id = ? AND status = 'Active'
        ORDER BY points_required ASC`,
@@ -216,6 +282,52 @@ router.get('/announcements', async (req, res, next) => {
       statusCode: 200,
       message: 'System announcements fetched successfully',
       data: { announcements: rows }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Submit public customer review / feedback
+router.post('/reviews', async (req, res, next) => {
+  try {
+    const { restaurantId, customerName, rating, content, platform = 'Direct', userId = null } = req.body;
+    if (!restaurantId || !customerName || rating === undefined || !content) {
+      return sendError(res, {
+        statusCode: 400,
+        message: 'Missing restaurantId, customerName, rating, or content in request body'
+      });
+    }
+
+    const pool = getDatabasePool();
+    const [result] = await pool.execute(
+      `INSERT INTO customer_reviews (user_id, restaurant_id, customer_name, platform, rating, content)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId || null, restaurantId, customerName.trim(), platform, rating, content.trim()]
+    );
+
+    try {
+      const socketUtils = require('../../utils/socket');
+      const io = socketUtils.getIO();
+      io.to(`restaurant_${restaurantId}`).emit('newReview', {
+        id: result.insertId,
+        restaurantId,
+        customerName: customerName.trim(),
+        platform,
+        rating,
+        content: content.trim(),
+        aiReplyDraft: null,
+        replyStatus: 'Pending',
+        createdAt: new Date().toISOString()
+      });
+    } catch (socketErr) {
+      console.error('[Socket] Failed to emit newReview event:', socketErr.message);
+    }
+
+    return sendSuccess(res, {
+      statusCode: 201,
+      message: 'Feedback submitted successfully',
+      data: { id: result.insertId }
     });
   } catch (error) {
     return next(error);

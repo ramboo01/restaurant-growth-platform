@@ -54,7 +54,23 @@ function SettingsPage() {
             address: data.address || '',
             cuisineType: data.cuisine || '',
             openingTime: data.openingTime ? data.openingTime.slice(0, 5) : '08:00',
-            closingTime: data.closingTime ? data.closingTime.slice(0, 5) : '23:00'
+            closingTime: data.closingTime ? data.closingTime.slice(0, 5) : '23:00',
+            weeklySchedule: data.weeklySchedule || 'Mon-Sun',
+            gst: data.gst !== undefined ? String(data.gst) : '5',
+            serviceCharge: data.serviceCharge !== undefined ? String(data.serviceCharge) : '10',
+            deliveryRadius: data.deliveryRadius !== undefined ? String(data.deliveryRadius) : '8',
+            minimumOrderAmount: data.minimumOrderAmount !== undefined ? String(data.minimumOrderAmount) : '10',
+            deliveryFee: data.deliveryFee !== undefined ? String(data.deliveryFee) : '2.99',
+            freeDeliveryThreshold: data.freeDeliveryThreshold !== undefined ? String(data.freeDeliveryThreshold) : '35',
+            cash: data.cash !== undefined ? Boolean(data.cash) : true,
+            card: data.card !== undefined ? Boolean(data.card) : true,
+            upi: data.upi !== undefined ? Boolean(data.upi) : true,
+            wallet: data.wallet !== undefined ? Boolean(data.wallet) : false,
+            primaryColor: data.primaryColor || '#1f2933',
+            secondaryColor: data.secondaryColor || '#d9973f',
+            emailNotifications: data.emailNotifications !== undefined ? Boolean(data.emailNotifications) : true,
+            smsNotifications: data.smsNotifications !== undefined ? Boolean(data.smsNotifications) : false,
+            pushNotifications: data.pushNotifications !== undefined ? Boolean(data.pushNotifications) : true
           }));
         }
       } catch (err) {
@@ -89,7 +105,23 @@ function SettingsPage() {
         address: settings.address,
         cuisine: settings.cuisineType,
         openingTime: settings.openingTime,
-        closingTime: settings.closingTime
+        closingTime: settings.closingTime,
+        weeklySchedule: settings.weeklySchedule,
+        gst: Number(settings.gst),
+        serviceCharge: Number(settings.serviceCharge),
+        deliveryRadius: Number(settings.deliveryRadius),
+        minimumOrderAmount: Number(settings.minimumOrderAmount),
+        deliveryFee: Number(settings.deliveryFee),
+        freeDeliveryThreshold: Number(settings.freeDeliveryThreshold),
+        cash: settings.cash,
+        card: settings.card,
+        upi: settings.upi,
+        wallet: settings.wallet,
+        primaryColor: settings.primaryColor,
+        secondaryColor: settings.secondaryColor,
+        emailNotifications: settings.emailNotifications,
+        smsNotifications: settings.smsNotifications,
+        pushNotifications: settings.pushNotifications
       };
       await restaurantService.updateRestaurant(user.restaurantId, payload);
       setSuccess('Settings saved successfully!');
@@ -199,38 +231,6 @@ function SettingsPage() {
                           <input className="form-control" id={field.name} name={field.name} onChange={handleChange} value={settings[field.name]} />
                         </div>
                       ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="card border-0 guest-info-card">
-                  <div className="card-body p-4">
-                    <h2 className="h5 mb-3">Branding</h2>
-                    <div className="row g-3">
-                      <div className="col-12 col-md-6">
-                        <div className="border rounded-3 p-4 text-center bg-light h-100">
-                          <div className="fw-semibold mb-1">Logo Placeholder</div>
-                          <div className="text-secondary small">Upload area</div>
-                        </div>
-                      </div>
-                      <div className="col-12 col-md-6">
-                        <div className="border rounded-3 p-4 text-center bg-light h-100">
-                          <div className="fw-semibold mb-1">Restaurant Banner Placeholder</div>
-                          <div className="text-secondary small">Upload area</div>
-                        </div>
-                      </div>
-                      <div className="col-12 col-md-6">
-                        <label className="form-label" htmlFor="primaryColor">
-                          Primary Color
-                        </label>
-                        <input className="form-control form-control-color" id="primaryColor" name="primaryColor" onChange={handleChange} type="color" value={settings.primaryColor} />
-                      </div>
-                      <div className="col-12 col-md-6">
-                        <label className="form-label" htmlFor="secondaryColor">
-                          Secondary Color
-                        </label>
-                        <input className="form-control form-control-color" id="secondaryColor" name="secondaryColor" onChange={handleChange} type="color" value={settings.secondaryColor} />
-                      </div>
                     </div>
                   </div>
                 </div>

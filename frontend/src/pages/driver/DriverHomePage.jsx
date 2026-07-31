@@ -41,11 +41,13 @@ function DriverHomePage() {
           customerPhone: active.customerPhone || active.customer_phone || '(555) 234-5678',
           status: active.orderStatus || active.order_status,
           totalAmount: active.totalAmount || active.total_amount,
-          pickupAddress: 'Taco Express - 104 N State St, Chicago',
-          deliveryAddress: fulfillment.address ? `${fulfillment.address}, ${fulfillment.city || ''}` : '742 Evergreen Terrace, Chicago',
+          pickupAddress: 'RestruRent Kitchen - Main Outlet',
+          deliveryAddress: (fulfillment.addressLine || fulfillment.address)
+            ? `${fulfillment.addressLine || fulfillment.address}${fulfillment.city ? `, ${fulfillment.city}` : ''}`
+            : 'Store Pickup',
           deliveryPin: active.deliveryOtp || active.delivery_otp || '1234',
-          itemsCount: Array.isArray(active.items) ? active.items.length : 3,
-          eta: '12 mins'
+          itemsCount: Array.isArray(active.items) ? active.items.length : 1,
+          eta: '15 mins'
         });
       }
 
@@ -66,9 +68,15 @@ function DriverHomePage() {
     const handleUpdate = () => loadDriverData();
     socket.on('ORDER_STATUS_CHANGED', handleUpdate);
     socket.on('NEW_ORDER_RECEIVED', handleUpdate);
+    socket.on('newOrder', handleUpdate);
+    socket.on('NEW_ORDER', handleUpdate);
+    socket.on('orderUpdated', handleUpdate);
     return () => {
       socket.off('ORDER_STATUS_CHANGED', handleUpdate);
       socket.off('NEW_ORDER_RECEIVED', handleUpdate);
+      socket.off('newOrder', handleUpdate);
+      socket.off('NEW_ORDER', handleUpdate);
+      socket.off('orderUpdated', handleUpdate);
     };
   }, [socket]);
 

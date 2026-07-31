@@ -1,11 +1,20 @@
+import { getImageUrl } from '../../utils/imageUtils.js';
+
 function GuestMenuItemCard({ categoryName, item, onViewItem }) {
   const isUnavailable = item.is86d || !item.isAvailable;
+  const imgUrl = getImageUrl(item.imageUrl);
 
   return (
     <article className={`card border-0 guest-menu-card h-100 ${isUnavailable ? 'is-unavailable' : ''}`}>
       <div className="card-body d-flex flex-column">
         <div className="d-flex gap-3 mb-3">
-          <div className="guest-item-visual" aria-hidden="true">{item.imagePlaceholder}</div>
+          <div className="guest-item-visual overflow-hidden p-0" aria-hidden="true">
+            {imgUrl ? (
+              <img src={imgUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              item.imagePlaceholder
+            )}
+          </div>
           <div className="flex-grow-1">
             <div className="d-flex justify-content-between gap-2">
               <h3 className="h6 mb-1">{item.name}</h3>

@@ -51,9 +51,11 @@ import StaffOrdersPage from '../pages/staff/StaffOrdersPage.jsx';
 import Staff86BoardPage from '../pages/staff/Staff86BoardPage.jsx';
 import StaffGuestLookupPage from '../pages/staff/StaffGuestLookupPage.jsx';
 import StaffInventoryPage from '../pages/staff/StaffInventoryPage.jsx';
+import StaffPosLoyaltyPage from '../pages/staff/StaffPosLoyaltyPage.jsx';
 
 import NotFoundPage from '../pages/system/NotFoundPage.jsx';
 import ProtectedRoute from '../components/auth/ProtectedRoute.jsx';
+import GuestAuthRoute from '../components/auth/GuestAuthRoute.jsx';
 import ReviewsPage from '../pages/owner/ReviewsPage.jsx';
 import SeoPage from '../pages/owner/SeoPage.jsx';
 import FranchisePage from '../pages/owner/FranchisePage.jsx';
@@ -62,25 +64,43 @@ import DeliveryConfigPage from '../pages/owner/DeliveryConfigPage.jsx';
 import AiOperationsPage from '../pages/owner/AiOperationsPage.jsx';
 import FinancialProductsPage from '../pages/owner/FinancialProductsPage.jsx';
 
+import SiteContentEditorPage from '../pages/owner/SiteContentEditorPage.jsx';
+import GuestPreferencesPage from '../pages/guest/GuestPreferencesPage.jsx';
+import DataExportPage from '../pages/owner/DataExportPage.jsx';
+import StaffAvailabilityPage from '../pages/staff/StaffAvailabilityPage.jsx';
+import FranchiseCompliancePage from '../pages/owner/FranchiseCompliancePage.jsx';
+import AdminPrivacyConsolePage from '../pages/admin/AdminPrivacyConsolePage.jsx';
+import AdminFinancialCompliancePage from '../pages/admin/AdminFinancialCompliancePage.jsx';
+import AdminAuditLogsPage from '../pages/admin/AdminAuditLogsPage.jsx';
+import AdminEcosystemPage from '../pages/admin/AdminEcosystemPage.jsx';
+import StaffPerformancePayoutPage from '../pages/staff/StaffPerformancePayoutPage.jsx';
+import OwnerFranchiseComparisonPage from '../pages/owner/OwnerFranchiseComparisonPage.jsx';
+
 function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
         <Route element={<GuestLayout />}>
+          {/* Public guest pages — no login needed */}
           <Route index element={<GuestHomePage />} />
           <Route path="signin" element={<GuestSignInPage />} />
           <Route path="signup" element={<GuestSignUpPage />} />
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
-          <Route path="rewards" element={<GuestRewardsPage />} />
-          <Route path="catering" element={<GuestCateringPage />} />
-          <Route path="checkout" element={<GuestCheckoutPage />} />
-          <Route path="orders" element={<GuestOrdersPage />} />
           <Route path="orders/:orderId" element={<GuestOrderTrackingPage />} />
           <Route path="order-success" element={<GuestOrderSuccessPage />} />
+
+          {/* Protected guest pages — must be signed in */}
+          <Route element={<GuestAuthRoute />}>
+            <Route path="checkout" element={<GuestCheckoutPage />} />
+            <Route path="orders" element={<GuestOrdersPage />} />
+            <Route path="rewards" element={<GuestRewardsPage />} />
+            <Route path="catering" element={<GuestCateringPage />} />
+            <Route path="preferences" element={<GuestPreferencesPage />} />
+          </Route>
         </Route>
 
-        <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin']} />}>
           <Route path="owner" element={<OwnerLayout />}>
             <Route index element={<OwnerHomePage />} />
             <Route path="dashboard" element={<OwnerHomePage />} />
@@ -91,6 +111,7 @@ function AppRoutes() {
             <Route path="orders" element={<OwnerOrdersPage />} />
             <Route path="86-board" element={<Owner86BoardPage />} />
             <Route path="site-app" element={<SiteAppPage />} />
+            <Route path="site-editor" element={<SiteContentEditorPage />} />
             <Route path="campaigns" element={<CampaignStudioPage />} />
             <Route path="loyalty" element={<LoyaltyDashboardPage />} />
             <Route path="seo" element={<SeoPage />} />
@@ -101,13 +122,20 @@ function AppRoutes() {
             <Route path="suppliers" element={<SupplierPage />} />
             <Route path="ai-operations" element={<AiOperationsPage />} />
             <Route path="franchise" element={<FranchisePage />} />
+            <Route path="franchise-compliance" element={<FranchiseCompliancePage />} />
+            <Route path="franchise-comparison" element={<OwnerFranchiseComparisonPage />} />
             <Route path="reports" element={<AnalyticsPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="financial-products" element={<FinancialProductsPage />} />
+            <Route path="data-export" element={<DataExportPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            {/* Internal staff registration — only accessible when logged in as Owner/Admin */}
+            <Route path="register-staff" element={<RegisterPage />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
           </Route>
+        </Route>
 
+        <Route element={<ProtectedRoute allowedRoles={['Staff', 'Owner', 'Admin']} />}>
           <Route path="staff" element={<StaffLayout />}>
             <Route index element={<StaffHomePage />} />
             <Route path="orders" element={<StaffOrdersPage />} />
@@ -115,16 +143,23 @@ function AppRoutes() {
             <Route path="86-board" element={<Staff86BoardPage />} />
             <Route path="guest-lookup" element={<StaffGuestLookupPage />} />
             <Route path="inventory" element={<StaffInventoryPage />} />
+            <Route path="pos-loyalty" element={<StaffPosLoyaltyPage />} />
+            <Route path="availability" element={<StaffAvailabilityPage />} />
+            <Route path="performance-payout" element={<StaffPerformancePayoutPage />} />
             <Route path="*" element={<StaffHomePage />} />
           </Route>
+        </Route>
 
+        <Route element={<ProtectedRoute allowedRoles={['Driver', 'Owner', 'Admin']} />}>
           <Route path="driver" element={<DriverLayout />}>
             <Route index element={<DriverHomePage />} />
             <Route path="orders" element={<DriverOrdersPage />} />
             <Route path="profile" element={<DriverProfilePage />} />
             <Route path="*" element={<DriverHomePage />} />
           </Route>
+        </Route>
 
+        <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
@@ -137,8 +172,12 @@ function AppRoutes() {
             <Route path="sync" element={<AdminChannelSyncPage />} />
             <Route path="onboarding" element={<AdminOnboardingPage />} />
             <Route path="support" element={<AdminSupportTicketsPage />} />
-            <Route path="audit" element={<AdminAuditLogPage />} />
-            <Route path="*" element={<Navigate to="/admin" replace />} />
+            <Route path="privacy-console" element={<AdminPrivacyConsolePage />} />
+            <Route path="financial-compliance" element={<AdminFinancialCompliancePage />} />
+            <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+            <Route path="audit" element={<AdminAuditLogsPage />} />
+            <Route path="ecosystem" element={<AdminEcosystemPage />} />
+            <Route path="*" element={<Navigate to="/404" replace />} />
           </Route>
         </Route>
 

@@ -12,13 +12,15 @@ const NOTIFICATION_SORT_MAP = {
 async function createNotification(payload) {
   const [result] = await getDatabasePool().execute(
     `INSERT INTO notifications
-      (restaurant_id, title, message, type, is_read)
-     VALUES (?, ?, ?, ?, ?)`,
+      (restaurant_id, user_id, title, message, type, discount_code, is_read)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       payload.restaurantId,
+      payload.userId || null,
       payload.title.trim(),
       payload.message.trim(),
-      payload.type,
+      payload.type || 'CAMPAIGN',
+      payload.discountCode || null,
       payload.isRead ? 1 : 0
     ]
   );
@@ -45,7 +47,7 @@ async function getNotifications(query = {}) {
 
   return executePaginatedQuery({
     pool,
-    selectClause: `SELECT id, restaurant_id AS restaurantId, title, message, type, is_read AS isRead, created_at AS createdAt`,
+    selectClause: `SELECT id, restaurant_id AS restaurantId, user_id AS userId, title, message, type, discount_code AS discountCode, is_read AS isRead, created_at AS createdAt`,
     fromClause: 'FROM notifications',
     whereClauses,
     params,
@@ -59,7 +61,7 @@ async function getNotifications(query = {}) {
 
 async function getNotificationById(id) {
   const [rows] = await getDatabasePool().execute(
-    `SELECT id, restaurant_id AS restaurantId, title, message, type, is_read AS isRead, created_at AS createdAt
+    `SELECT id, restaurant_id AS restaurantId, user_id AS userId, title, message, type, discount_code AS discountCode, is_read AS isRead, created_at AS createdAt
      FROM notifications
      WHERE id = ?
      LIMIT 1`,
@@ -74,6 +76,11 @@ async function getNotificationsByRestaurantId(restaurantId, query = {}) {
   const whereClauses = ['restaurant_id = ?'];
   const params = [restaurantId];
 
+  if (query.userId) {
+    whereClauses.push('(user_id = ? OR user_id IS NULL)');
+    params.push(query.userId);
+  }
+
   if (options.search) {
     whereClauses.push('(title LIKE ? OR message LIKE ? OR type LIKE ?)');
     const pattern = `%${options.search}%`;
@@ -87,12 +94,12 @@ async function getNotificationsByRestaurantId(restaurantId, query = {}) {
 
   return executePaginatedQuery({
     pool,
-    selectClause: `SELECT id, restaurant_id AS restaurantId, title, message, type, is_read AS isRead, created_at AS createdAt`,
+    selectClause: `SELECT id, restaurant_id AS restaurantId, user_id AS userId, title, message, type, discount_code AS discountCode, is_read AS isRead, created_at AS createdAt`,
     fromClause: 'FROM notifications',
     whereClauses,
     params,
-    sortColumn: options.sortColumn,
-    order: options.order,
+    sortColumn: options.sortColumn || 'created_at',
+    order: options.order || 'DESC',
     page: options.page,
     limit: options.limit,
     offset: options.offset
@@ -107,6 +114,19 @@ async function markNotificationAsRead(id) {
   return result.affectedRows > 0 ? getNotificationById(id) : null;
 }
 
+async function markAllNotificationsAsRead(restaurantId, userId = null) {
+  const pool = getDatabasePool();
+  if (userId) {
+    await pool.execute(
+      'UPDATE notifications SET is_read = 1 WHERE restaurant_id = ? AND (user_id = ? OR user_id IS NULL)',
+      [restaurantId, userId]
+    );
+  } else {
+    await pool.execute('UPDATE notifications SET is_read = 1 WHERE restaurant_id = ?', [restaurantId]);
+  }
+  return true;
+}
+
 async function deleteNotification(id) {
   const [result] = await getDatabasePool().execute('DELETE FROM notifications WHERE id = ?', [id]);
   return result.affectedRows > 0;
@@ -118,5 +138,6 @@ module.exports = {
   getNotificationById,
   getNotificationsByRestaurantId,
   markNotificationAsRead,
+  markAllNotificationsAsRead,
   deleteNotification
 };

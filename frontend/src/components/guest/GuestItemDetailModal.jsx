@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getImageUrl } from '../../utils/imageUtils.js';
 
 function formatCurrency(value) {
   return `$${value.toFixed(2)}`;
@@ -118,8 +119,12 @@ function GuestItemDetailModal({ item, onAddToCart, onClose }) {
 
           <div className="modal-body">
             <div className="d-flex gap-3 mb-3">
-              <div className="guest-item-visual guest-item-visual-lg" aria-hidden="true">
-                {item.imagePlaceholder}
+              <div className="guest-item-visual guest-item-visual-lg overflow-hidden p-0" aria-hidden="true">
+                {getImageUrl(item.imageUrl) ? (
+                  <img src={getImageUrl(item.imageUrl)} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  item.imagePlaceholder
+                )}
               </div>
               <div>
                 <p className="mb-2">{item.description}</p>

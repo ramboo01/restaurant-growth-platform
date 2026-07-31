@@ -99,9 +99,19 @@ async function getDashboardSummary(restaurantId) {
   };
 }
 
+async function ensureDiscountAmountColumn() {
+  try {
+    const pool = getDatabasePool();
+    await pool.execute('ALTER TABLE loyalty_rewards ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT NULL');
+  } catch {
+    /* Column already exists */
+  }
+}
+ensureDiscountAmountColumn();
+
 async function getRewards(restaurantId) {
   const [rows] = await getDatabasePool().execute(
-    `SELECT id, name, description, points_required AS pointsRequired, status 
+    `SELECT id, name, description, points_required AS pointsRequired, COALESCE(discount_amount, ROUND(points_required * 0.10, 2)) AS discountAmount, status 
      FROM loyalty_rewards 
      WHERE restaurant_id = ? 
      ORDER BY created_at ASC`,
@@ -111,22 +121,24 @@ async function getRewards(restaurantId) {
 }
 
 async function createReward(restaurantId, payload) {
+  const discountVal = payload.discountAmount ? Number(payload.discountAmount) : Math.round(Number(payload.pointsRequired) * 0.10 * 100) / 100;
   const [result] = await getDatabasePool().execute(
-    `INSERT INTO loyalty_rewards (restaurant_id, name, description, points_required, status)
-     VALUES (?, ?, ?, ?, ?)`,
-    [restaurantId, payload.name, payload.description, payload.pointsRequired, payload.status || 'Active']
+    `INSERT INTO loyalty_rewards (restaurant_id, name, description, points_required, discount_amount, status)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [restaurantId, payload.name, payload.description, payload.pointsRequired, discountVal, payload.status || 'Active']
   );
-  return { id: result.insertId, ...payload, status: payload.status || 'Active' };
+  return { id: result.insertId, ...payload, discountAmount: discountVal, status: payload.status || 'Active' };
 }
 
 async function updateReward(restaurantId, rewardId, payload) {
+  const discountVal = payload.discountAmount ? Number(payload.discountAmount) : Math.round(Number(payload.pointsRequired) * 0.10 * 100) / 100;
   await getDatabasePool().execute(
     `UPDATE loyalty_rewards 
-     SET name = ?, description = ?, points_required = ?, status = ?
+     SET name = ?, description = ?, points_required = ?, discount_amount = ?, status = ?
      WHERE id = ? AND restaurant_id = ?`,
-    [payload.name, payload.description, payload.pointsRequired, payload.status, rewardId, restaurantId]
+    [payload.name, payload.description, payload.pointsRequired, discountVal, payload.status, rewardId, restaurantId]
   );
-  return { id: rewardId, ...payload };
+  return { id: rewardId, ...payload, discountAmount: discountVal };
 }
 
 async function deleteReward(restaurantId, rewardId) {
@@ -136,12 +148,13 @@ async function deleteReward(restaurantId, rewardId) {
   );
 }
 
-async function addLoyaltyPointsByPhone(restaurantId, phone, totalAmount) {
+async function addLoyaltyPointsByPhone(restaurantId, phone, totalAmount, customerName = 'Guest Member') {
   const pointsToAdd = Math.round(Number(totalAmount) * 10);
   if (pointsToAdd <= 0) return null;
 
   const pool = getDatabasePool();
   const cleanPhone = phone.trim();
+  const cleanName = customerName && customerName.trim() ? customerName.trim() : 'Guest Member';
 
   // Find member first
   const [rows] = await pool.execute(
@@ -159,11 +172,14 @@ async function addLoyaltyPointsByPhone(restaurantId, phone, totalAmount) {
     else if (newPoints >= 1000) newTier = 'Gold';
     else if (newPoints >= 500) newTier = 'Silver';
 
+    // Update customer_name if existing was generic 'Guest Member'
+    const nameToSave = (member.customer_name === 'Guest Member' || !member.customer_name) ? cleanName : member.customer_name;
+
     await pool.execute(
-      'UPDATE loyalty_members SET points = ?, tier = ? WHERE id = ?',
-      [newPoints, newTier, member.id]
+      'UPDATE loyalty_members SET points = ?, tier = ?, customer_name = ? WHERE id = ?',
+      [newPoints, newTier, nameToSave, member.id]
     );
-    console.log(`[Loyalty] Updated member ${member.customer_name} (+${pointsToAdd} pts, total: ${newPoints})`);
+    console.log(`[Loyalty] Updated member ${nameToSave} (+${pointsToAdd} pts, total: ${newPoints})`);
   } else {
     // Auto-enroll Guest member
     let newTier = 'Bronze';
@@ -174,10 +190,50 @@ async function addLoyaltyPointsByPhone(restaurantId, phone, totalAmount) {
     await pool.execute(
       `INSERT INTO loyalty_members (restaurant_id, customer_name, phone, points, tier)
        VALUES (?, ?, ?, ?, ?)`,
-      [restaurantId, 'Guest Member', cleanPhone, pointsToAdd, newTier]
+      [restaurantId, cleanName, cleanPhone, pointsToAdd, newTier]
     );
-    console.log(`[Loyalty] Auto-enrolled new member with phone ${cleanPhone} (+${pointsToAdd} pts)`);
+    console.log(`[Loyalty] Auto-enrolled new member ${cleanName} with phone ${cleanPhone} (+${pointsToAdd} pts)`);
   }
+}
+
+async function redeemLoyaltyPointsByPhone(restaurantId, phone, pointsToDeduct, rewardName) {
+  const pool = getDatabasePool();
+  const [rows] = await pool.execute(
+    'SELECT id, customer_name, phone, points, tier FROM loyalty_members WHERE restaurant_id = ? AND phone = ? LIMIT 1',
+    [restaurantId, phone.trim()]
+  );
+
+  if (rows.length === 0) {
+    throw new Error('Loyalty member not found for provided phone number.');
+  }
+
+  const member = rows[0];
+  if (member.points < pointsToDeduct) {
+    throw new Error(`Insufficient points balance. Member has ${member.points} points, required: ${pointsToDeduct}.`);
+  }
+
+  const remainingPoints = member.points - pointsToDeduct;
+  let newTier = 'Bronze';
+  if (remainingPoints >= 2000) newTier = 'Platinum';
+  else if (remainingPoints >= 1000) newTier = 'Gold';
+  else if (remainingPoints >= 500) newTier = 'Silver';
+
+  await pool.execute(
+    'UPDATE loyalty_members SET points = ?, tier = ? WHERE id = ?',
+    [remainingPoints, newTier, member.id]
+  );
+
+  const voucherCode = `POS-REDEEM-${Math.floor(100000 + Math.random() * 900000)}`;
+  return {
+    memberId: member.id,
+    customerName: member.customer_name,
+    phone: member.phone,
+    pointsDeducted: pointsToDeduct,
+    remainingPoints,
+    tier: newTier,
+    rewardName,
+    voucherCode
+  };
 }
 
 module.exports = {
@@ -193,5 +249,6 @@ module.exports = {
   createReward,
   updateReward,
   deleteReward,
-  addLoyaltyPointsByPhone
+  addLoyaltyPointsByPhone,
+  redeemLoyaltyPointsByPhone
 };

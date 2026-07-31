@@ -10,7 +10,8 @@ const mapBackendToFrontend = (item) => {
     unit: item.unit || '',
     minimumStock: item.minimumQuantity !== undefined ? item.minimumQuantity : 0,
     supplier: item.supplier || 'General Supplier',
-    status: item.status || 'In Stock'
+    status: item.status || 'In Stock',
+    costPerUnit: item.costPerUnit !== undefined ? Number(item.costPerUnit) : 0
   };
 };
 
@@ -75,5 +76,38 @@ export const inventoryService = {
   deleteInventoryItem: async (id) => {
     const response = await api.delete(`/api/inventory/${id}`);
     return response.data;
+  },
+
+  // ─── Transaction APIs ───────────────────────────────────
+
+  stockIn: async (itemId, payload) => {
+    const response = await api.post(`/api/inventory/${itemId}/stock-in`, payload);
+    return response.data;
+  },
+
+  recordUsage: async (itemId, payload) => {
+    const response = await api.post(`/api/inventory/${itemId}/usage`, payload);
+    return response.data;
+  },
+
+  recordWastage: async (itemId, payload) => {
+    const response = await api.post(`/api/inventory/${itemId}/wastage`, payload);
+    return response.data;
+  },
+
+  adjustStock: async (itemId, payload) => {
+    const response = await api.post(`/api/inventory/${itemId}/adjustment`, payload);
+    return response.data;
+  },
+
+  getTransactions: async (query = {}) => {
+    const params = new URLSearchParams(query).toString();
+    const response = await api.get(`/api/inventory/transactions${params ? '?' + params : ''}`);
+    return response.data?.data?.transactions || [];
+  },
+
+  getTransactionSummary: async () => {
+    const response = await api.get('/api/inventory/transactions/summary');
+    return response.data?.data || {};
   }
 };

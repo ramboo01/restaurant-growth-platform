@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post('/', validate(notificationSchema), notificationController.create);
 router.get('/', notificationController.list);
+router.patch('/read-all', notificationController.markAllRead);
 router.get('/:id', notificationController.getById);
 router.patch('/:id/read', notificationController.markRead);
 router.delete('/:id', notificationController.remove);
