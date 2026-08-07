@@ -4,6 +4,17 @@ import EmptyState from '../../components/feedback/EmptyState.jsx';
 import { fetchReviews, updateReview, generateAiReply } from '../../services/reviewService.js';
 import { useSocket } from '../../context/SocketContext.jsx';
 
+function isHealthSafetyRisk(content) {
+  if (!content) return false;
+  const keywords = [
+    'poison', 'sick', 'vomit', 'ill', 'allergic', 'allergy', 'hair', 'bug', 'roach',
+    'dirt', 'clean', 'hygiene', 'rat', 'mouse', 'fly', 'spider', 'bacteria', 'infection',
+    'hospital', 'stomach ache', 'food poisoning', 'undercooked', 'raw'
+  ];
+  const lowercaseContent = content.toLowerCase();
+  return keywords.some(keyword => lowercaseContent.includes(keyword));
+}
+
 function ReviewsPage() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);

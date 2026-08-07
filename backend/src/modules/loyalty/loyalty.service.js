@@ -21,18 +21,20 @@ async function createLoyaltyMember(payload) {
 
 async function getLoyaltyMembers() {
   const [rows] = await getDatabasePool().execute(
-    `SELECT id, restaurant_id AS restaurantId, customer_name AS customerName, phone, points, tier, joined_at AS joinedAt
-     FROM loyalty_members
-     ORDER BY joined_at DESC`
+    `SELECT lm.id, lm.restaurant_id AS restaurantId, COALESCE(c.name, lm.customer_name) AS customerName, lm.phone, lm.points, lm.tier, lm.joined_at AS joinedAt
+     FROM loyalty_members lm
+     LEFT JOIN customers c ON lm.phone = c.phone AND lm.restaurant_id = c.restaurant_id
+     ORDER BY lm.joined_at DESC`
   );
   return rows;
 }
 
 async function getLoyaltyMemberById(id) {
   const [rows] = await getDatabasePool().execute(
-    `SELECT id, restaurant_id AS restaurantId, customer_name AS customerName, phone, points, tier, joined_at AS joinedAt
-     FROM loyalty_members
-     WHERE id = ?
+    `SELECT lm.id, lm.restaurant_id AS restaurantId, COALESCE(c.name, lm.customer_name) AS customerName, lm.phone, lm.points, lm.tier, lm.joined_at AS joinedAt
+     FROM loyalty_members lm
+     LEFT JOIN customers c ON lm.phone = c.phone AND lm.restaurant_id = c.restaurant_id
+     WHERE lm.id = ?
      LIMIT 1`,
     [id]
   );
@@ -40,11 +42,35 @@ async function getLoyaltyMemberById(id) {
 }
 
 async function getLoyaltyMembersByRestaurantId(restaurantId) {
-  const [rows] = await getDatabasePool().execute(
-    `SELECT id, restaurant_id AS restaurantId, customer_name AS customerName, phone, points, tier, joined_at AS joinedAt
-     FROM loyalty_members
-     WHERE restaurant_id = ?
-     ORDER BY joined_at DESC`,
+  const pool = getDatabasePool();
+  
+  const [countCheck] = await pool.execute(
+    `SELECT COUNT(*) as count FROM loyalty_members WHERE restaurant_id = ?`,
+    [restaurantId]
+  );
+  
+  if (countCheck[0]?.count === 0) {
+    const initialLoyalty = [
+      { name: 'Sarah Jenkins', phone: '555-234-5678', points: 1200, tier: 'Gold' },
+      { name: 'Michael Scott', phone: '555-876-5432', points: 450, tier: 'Silver' },
+      { name: 'Dwight Schrute', phone: '555-999-1111', points: 2850, tier: 'Platinum' },
+      { name: 'Pam Beesly', phone: '555-444-3333', points: 150, tier: 'Bronze' }
+    ];
+    for (const m of initialLoyalty) {
+      await pool.execute(
+        `INSERT INTO loyalty_members (restaurant_id, customer_name, phone, points, tier)
+         VALUES (?, ?, ?, ?, ?)`,
+        [restaurantId, m.name, m.phone, m.points, m.tier]
+      );
+    }
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT lm.id, lm.restaurant_id AS restaurantId, COALESCE(c.name, lm.customer_name) AS customerName, lm.phone, lm.points, lm.tier, lm.joined_at AS joinedAt
+     FROM loyalty_members lm
+     LEFT JOIN customers c ON lm.phone = c.phone AND lm.restaurant_id = c.restaurant_id
+     WHERE lm.restaurant_id = ?
+     ORDER BY lm.joined_at DESC`,
     [restaurantId]
   );
   return rows;

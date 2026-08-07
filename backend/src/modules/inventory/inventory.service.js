@@ -79,6 +79,28 @@ async function getInventoryItemById(id) {
 
 async function getInventoryByRestaurantId(restaurantId, query = {}) {
   const pool = getDatabasePool();
+  
+  const [countCheck] = await pool.execute(
+    `SELECT COUNT(*) as count FROM inventory WHERE restaurant_id = ?`,
+    [restaurantId]
+  );
+  
+  if (countCheck[0]?.count === 0) {
+    const initialInventory = [
+      { itemName: 'Ground Beef (80/20)', category: 'Meat', unit: 'lbs', quantity: 42, minimumQuantity: 20, supplier: 'US Foods', status: 'In Stock' },
+      { itemName: 'Corn Tortillas', category: 'Dry Goods', unit: 'packs', quantity: 180, minimumQuantity: 50, supplier: 'Sysco', status: 'In Stock' },
+      { itemName: 'Avocados (Hass)', category: 'Produce', unit: 'cases', quantity: 12, minimumQuantity: 15, supplier: 'FreshPoint', status: 'Low Stock' },
+      { itemName: 'Oat Milk Barista', category: 'Dairy', unit: 'cases', quantity: 8, minimumQuantity: 10, supplier: 'Sysco', status: 'Low Stock' }
+    ];
+    for (const item of initialInventory) {
+      await pool.execute(
+        `INSERT INTO inventory (restaurant_id, item_name, category, unit, quantity, minimum_quantity, supplier, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [restaurantId, item.itemName, item.category, item.unit, item.quantity, item.minimumQuantity, item.supplier, item.status]
+      );
+    }
+  }
+
   const options = parseListOptions(query, { sortMap: INVENTORY_SORT_MAP });
   const whereClauses = ['restaurant_id = ?'];
   const params = [restaurantId];

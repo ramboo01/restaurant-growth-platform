@@ -1,9 +1,9 @@
 const { getDatabasePool } = require('../../config/database');
-const pool = getDatabasePool();
 const { getIO } = require('../../utils/socket');
 
 async function getPublicSiteSettings(req, res) {
   try {
+    const pool = getDatabasePool();
     const restaurantId = req.query.restaurant_id || 1;
     const [rows] = await pool.execute(
       `SELECT hero_title, hero_subtitle, hero_image_url, banner_text, banner_enabled, primary_color, secondary_color, announcement_ticker, store_hours, updated_at FROM site_settings WHERE restaurant_id = ? LIMIT 1`,
@@ -31,6 +31,7 @@ async function getPublicSiteSettings(req, res) {
 
 async function getOwnerSiteSettings(req, res) {
   try {
+    const pool = getDatabasePool();
     const restaurantId = req.user?.restaurant_id || 1;
     const [rows] = await pool.execute(
       `SELECT * FROM site_settings WHERE restaurant_id = ? LIMIT 1`,
@@ -47,6 +48,7 @@ async function getOwnerSiteSettings(req, res) {
 
 async function updateSiteSettings(req, res) {
   try {
+    const pool = getDatabasePool();
     const restaurantId = req.user?.restaurant_id || 1;
     const {
       hero_title,

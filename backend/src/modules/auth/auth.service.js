@@ -75,7 +75,7 @@ async function registerUser({ name, email, password, role, restaurantId }) {
 async function loginUser({ email, password }) {
   const normalizedEmail = email.trim().toLowerCase();
   const [rows] = await getDatabasePool().execute(
-    'SELECT id, name, email, password, role, restaurant_id AS restaurantId FROM users WHERE email = ? LIMIT 1',
+    'SELECT id, name, email, password, role, restaurant_id AS restaurantId, is_blocked, blocked_reason FROM users WHERE email = ? LIMIT 1',
     [normalizedEmail]
   );
 
@@ -84,6 +84,12 @@ async function loginUser({ email, password }) {
     const authError = new Error('Invalid email or password.');
     authError.code = 'INVALID_CREDENTIALS';
     throw authError;
+  }
+
+  if (user.is_blocked) {
+    const blockedError = new Error(`Your account has been blocked by the administrator. Reason: ${user.blocked_reason || 'Security Policy'}`);
+    blockedError.code = 'ACCOUNT_BLOCKED';
+    throw blockedError;
   }
 
   let passwordMatches;
@@ -99,6 +105,12 @@ async function loginUser({ email, password }) {
     authError.code = 'INVALID_CREDENTIALS';
     throw authError;
   }
+
+  // Update last_login_at timestamp
+  await getDatabasePool().execute(
+    'UPDATE users SET last_login_at = NOW() WHERE id = ?',
+    [user.id]
+  ).catch(() => {});
 
   // Fetch all restaurants this user can access
   let accessibleRestaurants = [];

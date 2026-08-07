@@ -13,11 +13,11 @@ function AdminDashboardPage() {
   });
 
   const [loading, setLoading] = useState(true);
+  const [alerts, setAlerts] = useState([]);
 
-  const [alerts, setAlerts] = useState([
-    { id: 1, type: 'danger', message: 'Yelp API connection timeout — Circuit breaker operational.', time: '5 min ago' },
-    { id: 2, type: 'info', message: 'Platform Admin identity verified. Full ecosystem access active.', time: 'Just now' },
-  ]);
+  const [isAlertsDismissed, setIsAlertsDismissed] = useState(() => {
+    return localStorage.getItem('dismissed_admin_alerts') === 'true';
+  });
 
   const [onboardingQueue, setOnboardingQueue] = useState([]);
 
@@ -25,30 +25,61 @@ function AdminDashboardPage() {
     fetchLiveData();
   }, []);
 
+  const extractList = (res) => {
+    if (res.status !== 'fulfilled' || !res.value) return [];
+    const val = res.value.data;
+    const payload = val?.data !== undefined ? val.data : val;
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.restaurants)) return payload.restaurants;
+    if (Array.isArray(payload?.customers)) return payload.customers;
+    if (Array.isArray(payload?.orders)) return payload.orders;
+    return [];
+  };
+
   async function fetchLiveData() {
     try {
       setLoading(true);
-      const [restRes, custRes, ordersRes] = await Promise.allSettled([
+      const [restRes, custRes, ordersRes, auditRes] = await Promise.allSettled([
         api.get('/api/restaurants'),
         api.get('/api/customers'),
-        api.get('/api/orders')
+        api.get('/api/orders'),
+        api.get('/api/admin/audit-logs')
       ]);
 
-      const restList = restRes.status === 'fulfilled' ? (Array.isArray(restRes.value.data) ? restRes.value.data : restRes.value.data?.restaurants || []) : [];
-      const custList = custRes.status === 'fulfilled' ? (Array.isArray(custRes.value.data) ? custRes.value.data : custRes.value.data?.customers || []) : [];
-      const orderList = ordersRes.status === 'fulfilled' ? (Array.isArray(ordersRes.value.data) ? ordersRes.value.data : ordersRes.value.data?.orders || []) : [];
+      const restList = extractList(restRes);
+      const custList = extractList(custRes);
+      const orderList = extractList(ordersRes);
+      const auditList = extractList(auditRes);
 
       const activeCount = restList.filter(r => r.status === 'Active' || r.isActive !== false).length;
-      const pendingCount = restList.filter(r => r.status === 'Pending Approval').length;
+      const pendingCount = restList.filter(r => r.status === 'Pending Approval' || r.status === 'Pending').length;
 
       setStats({
-        totalRestaurants: restList.length || 1,
-        activeLocations: activeCount || 1,
-        pendingApprovals: pendingCount || 0,
-        totalGuests: custList.length || 14,
-        activeSessions: orderList.length ? Math.min(orderList.length, 8) : 1,
+        totalRestaurants: restList.length,
+        activeLocations: activeCount,
+        pendingApprovals: pendingCount,
+        totalGuests: custList.length,
+        activeSessions: orderList.length,
         apiSuccessRate: '99.98%'
       });
+
+      // System Health Alerts from real Audit Logs
+      const dismissed = localStorage.getItem('dismissed_admin_alerts') === 'true';
+      if (dismissed) {
+        setAlerts([]);
+      } else if (auditList.length > 0) {
+        setAlerts(auditList.slice(0, 5).map(log => ({
+          id: log.id,
+          type: String(log.action_type || '').includes('FAIL') || String(log.action_type || '').includes('ERROR') ? 'danger' : 'info',
+          message: log.description || log.action_type,
+          time: log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+        })));
+      } else {
+        setAlerts([
+          { id: 'default-1', type: 'info', message: 'Platform Admin identity verified. Full ecosystem access active.', time: 'Just now' }
+        ]);
+      }
 
       if (restList.length > 0) {
         setOnboardingQueue(restList.slice(0, 5).map((r, i) => ({
@@ -59,9 +90,7 @@ function AdminDashboardPage() {
           phase: i === 0 ? 'Live Production' : i === 1 ? 'SEO & Launch' : 'Menu Import'
         })));
       } else {
-        setOnboardingQueue([
-          { id: 1, name: 'RestruRent Main', location: 'Downtown', progress: 100, phase: 'Live Production' }
-        ]);
+        setOnboardingQueue([]);
       }
     } catch (err) {
       console.error('Failed to load admin live stats:', err);
@@ -70,21 +99,27 @@ function AdminDashboardPage() {
     }
   }
 
+  const handleDismissAlerts = () => {
+    setAlerts([]);
+    localStorage.setItem('dismissed_admin_alerts', 'true');
+    setIsAlertsDismissed(true);
+  };
+
   return (
     <div className="container-fluid py-4">
       {/* Page Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-3 mb-4">
         <div>
           <h2 className="fw-bold mb-1">
             <i className="bi bi-shield-lock-fill text-danger me-2"></i> Platform Super Admin Console
           </h2>
           <p className="text-muted mb-0">System health, live multi-tenant database counts, and global infrastructure monitoring.</p>
         </div>
-        <div className="d-flex align-items-center gap-2">
-          <button className="btn btn-outline-secondary btn-sm" onClick={fetchLiveData}>
+        <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2 w-100 w-xl-auto mt-2 mt-xl-0">
+          <button className="btn btn-outline-secondary btn-sm text-nowrap" onClick={fetchLiveData}>
             <i className="bi bi-arrow-clockwise me-1"></i> Refresh Real-Time Data
           </button>
-          <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2">
+          <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 text-nowrap">
             <i className="bi bi-circle-fill me-2" style={{ fontSize: '0.6rem' }}></i> All services fully operational
           </span>
         </div>
@@ -121,7 +156,7 @@ function AdminDashboardPage() {
           <h5 className="fw-bold mb-0">
             <i className="bi bi-bell-fill text-danger me-2"></i> System Health Alerts
           </h5>
-          <button className="btn btn-sm btn-outline-secondary" onClick={() => setAlerts([])}>Dismiss All</button>
+          <button className="btn btn-sm btn-outline-secondary" onClick={handleDismissAlerts}>Dismiss All</button>
         </div>
         <div className="card-body p-0">
           {alerts.length === 0 ? (
@@ -153,9 +188,9 @@ function AdminDashboardPage() {
           <div className="card border-0 shadow-sm rounded-3 h-100">
             <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
               <h5 className="fw-bold mb-0">
-                <i className="bi bi-box-arrow-in-right text-primary me-2"></i> Restaurant Onboarding Pipeline
+                <i className="bi bi-shop text-primary me-2"></i> Registered Tenants &amp; Stores
               </h5>
-              <Link to="/admin/onboarding" className="btn btn-sm btn-link text-decoration-none">View Console</Link>
+              <Link to="/admin/restaurants" className="btn btn-sm btn-link text-decoration-none">Manage Tenants</Link>
             </div>
             <div className="card-body">
               {onboardingQueue.map(item => (
@@ -196,17 +231,30 @@ function AdminDashboardPage() {
               </h5>
             </div>
             <div className="card-body">
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
-                alert('Global announcement broadcasted successfully to all active store terminals!');
+                try {
+                  const title = e.target.elements.title.value;
+                  const message = e.target.elements.message.value;
+                  await api.post('/api/admin/broadcast', {
+                    title: `[BROADCAST] ${title}`,
+                    message: message,
+                    type: 'System'
+                  });
+                  alert('Global announcement broadcasted successfully to all active store terminals!');
+                  e.target.reset();
+                } catch (err) {
+                  console.error(err);
+                  alert('Failed to broadcast announcement.');
+                }
               }}>
                 <div className="mb-2">
                   <label className="form-label small fw-semibold">Announcement Title</label>
-                  <input type="text" className="form-control form-control-sm" placeholder="e.g. Scheduled Maintenance Alert" required />
+                  <input type="text" name="title" className="form-control form-control-sm" placeholder="e.g. Scheduled Maintenance Alert" required />
                 </div>
                 <div className="mb-2">
                   <label className="form-label small fw-semibold">Target Audience</label>
-                  <select className="form-select form-select-sm">
+                  <select name="audience" className="form-select form-select-sm">
                     <option value="All">All Roles (Guests, Owners, Staff)</option>
                     <option value="Owner">Store Owners & Managers</option>
                     <option value="Guest">Guest Storefront</option>
@@ -215,27 +263,27 @@ function AdminDashboardPage() {
                 </div>
                 <div className="mb-3">
                   <label className="form-label small fw-semibold">Message Content</label>
-                  <textarea className="form-control form-control-sm" rows="2" placeholder="Detail the announcement message..." required></textarea>
+                  <textarea name="message" className="form-control form-control-sm" rows="2" placeholder="Detail the announcement message..." required></textarea>
                 </div>
                 <button type="submit" className="btn btn-danger btn-sm w-100 fw-semibold">
-                  <i className="bi bg-broadcast me-1"></i> Broadcast Announcement
+                  <i className="bi bi-broadcast me-1"></i> Broadcast Announcement
                 </button>
               </form>
             </div>
           </div>
 
-          <div className="card border-0 shadow-sm rounded-3 h-100">
+          <div className="card border-0 shadow-sm rounded-3 h-auto">
             <div className="card-header bg-white border-0 py-3">
               <h5 className="fw-bold mb-0">Platform Admin Quick Actions</h5>
             </div>
             <div className="card-body d-flex flex-column gap-3">
-              <Link to="/admin/sync" className="d-flex align-items-center gap-3 p-3 bg-light rounded-3 text-decoration-none hover-shadow">
+              <Link to="/admin/ecosystem" className="d-flex align-items-center gap-3 p-3 bg-light rounded-3 text-decoration-none hover-shadow">
                 <div className="bg-primary bg-opacity-10 p-2 rounded-3 text-primary">
-                  <i className="bi bi-diagram-3 fs-4"></i>
+                  <i className="bi bi-arrow-repeat fs-4"></i>
                 </div>
                 <div>
-                  <div className="fw-bold text-dark">Channel Sync Health</div>
-                  <span className="text-muted small">Monitor UberEats/DoorDash API state & retries.</span>
+                  <div className="fw-bold text-dark">Ecosystem & Channels Hub</div>
+                  <span className="text-muted small">Monitor UberEats/DoorDash API state & credentials.</span>
                 </div>
               </Link>
 

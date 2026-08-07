@@ -15,6 +15,7 @@ function StaffLayout() {
   const navLinks = [
     { to: '/staff', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
     { to: '/staff/orders', label: 'Orders', icon: 'bi-receipt' },
+    { to: '/staff/catering', label: 'Catering', icon: 'bi-briefcase' },
     { to: '/staff/kitchen', label: 'Kitchen', icon: 'bi-fire' },
     { to: '/staff/86-board', label: "86'd", icon: 'bi-slash-circle' },
     { to: '/staff/guest-lookup', label: 'Guest Lookup', icon: 'bi-person-search' },

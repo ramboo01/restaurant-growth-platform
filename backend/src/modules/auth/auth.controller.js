@@ -118,9 +118,12 @@ async function login(request, response, next) {
     });
   } catch (error) {
     console.error('[auth] login failed:', error);
-    console.error('[auth] login stack:', error.stack);
     if (error.code === 'INVALID_CREDENTIALS') {
       error.statusCode = 401;
+      return next(error);
+    }
+    if (error.code === 'ACCOUNT_BLOCKED') {
+      error.statusCode = 403;
       return next(error);
     }
 

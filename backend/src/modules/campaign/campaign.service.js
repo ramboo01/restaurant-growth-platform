@@ -99,27 +99,68 @@ async function sendCampaign(id, restaurantId) {
 
   const campaign = updated[0];
 
-  // Dispatch Live Notification Entry
+  // Dispatch Live Notification Entry to target segment users
   try {
-    const { createNotification } = require('../notification/notification.service');
-    const notification = await createNotification({
-      restaurantId,
-      title: `📢 ${campaign.name}`,
-      message: campaign.content,
-      type: 'CAMPAIGN',
-      discountCode: campaign.discountCode,
-      isRead: false
-    });
+    const { createCustomerNotification } = require('../customerNotification/customerNotification.service');
+    const socketUtils = require('../../utils/socket');
+    const io = socketUtils.getIO();
 
-    // Emit Live Socket Broadcast to connected customers
-    try {
-      const socketUtils = require('../../utils/socket');
-      socketUtils.getIO().to(`restaurant_${restaurantId}`).emit('CAMPAIGN_BROADCAST', notification);
-    } catch (sockErr) {
-      console.error('[Socket] Failed to emit CAMPAIGN_BROADCAST event:', sockErr.message);
+    let userRows = [];
+    const segment = campaign.segmentTarget || 'All Customers';
+
+    if (segment === 'VIP Guests' || segment.includes('VIP')) {
+      const [rows] = await pool.execute(
+        `SELECT u.id FROM users u
+         JOIN customers c ON u.email = c.email
+         WHERE c.restaurant_id = ? AND (c.rfm_segment LIKE '%VIP%' OR c.total_orders >= 5)`,
+        [restaurantId]
+      );
+      userRows = rows;
+    } else if (segment.includes('At Risk')) {
+      const [rows] = await pool.execute(
+        `SELECT u.id FROM users u
+         JOIN customers c ON u.email = c.email
+         WHERE c.restaurant_id = ? AND (c.rfm_segment LIKE '%Risk%' OR c.days_inactive >= 30)`,
+        [restaurantId]
+      );
+      userRows = rows;
+    } else if (segment.includes('New')) {
+      const [rows] = await pool.execute(
+        `SELECT u.id FROM users u
+         LEFT JOIN customers c ON u.email = c.email
+         WHERE (c.restaurant_id = ? OR c.restaurant_id IS NULL) AND (c.id IS NULL OR c.total_orders <= 1)`,
+        [restaurantId]
+      );
+      userRows = rows;
+    } else {
+      // All Customers - all users
+      const [rows] = await pool.execute(
+        `SELECT id FROM users`
+      );
+      userRows = rows;
+    }
+
+    // Insert customer notifications and emit real-time socket events
+    console.log(`\n========================================\n📢 [CAMPAIGN BROADCAST] Sent via ${campaign.channel.toUpperCase()}\nTarget Segment: ${segment}\nRecipients: ${userRows.length} users\nMessage: "${campaign.content}"\n========================================\n`);
+
+    for (const row of userRows) {
+      try {
+        const notif = await createCustomerNotification({
+          userId: row.id,
+          restaurantId,
+          type: 'offer',
+          title: `📢 ${campaign.name}`,
+          message: campaign.content,
+          discountCode: campaign.discountCode
+        });
+
+        io.to(`user_${row.id}`).emit('customerNotification', notif);
+      } catch (err) {
+        console.error(`[Campaign Notification] Failed for user ${row.id}:`, err.message);
+      }
     }
   } catch (notifErr) {
-    console.error('[Notification] Failed to create broadcast notification:', notifErr.message);
+    console.error('[Notification] Failed to create or broadcast customer notifications:', notifErr.message);
   }
 
   return campaign;
@@ -149,7 +190,7 @@ async function validatePromoCode(code, restaurantId, subtotal = 0) {
 
   if (!campaign) {
     const codeUpper = cleanCode.toUpperCase();
-    if (['SAVE20', 'VIP20', 'WELCOME15', 'FREEDESSERT', 'DESI20', 'DARG123'].includes(codeUpper)) {
+    if (['SAVE20', 'VIP20', 'WELCOME15', 'FREEDESSERT', 'DESI20', 'DARG123', 'DIRECT15'].includes(codeUpper)) {
       const percent = codeUpper.includes('15') ? 15 : 20;
       const discountAmount = Number(((numSubtotal * percent) / 100).toFixed(2));
       return {

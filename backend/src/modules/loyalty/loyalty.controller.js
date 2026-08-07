@@ -19,7 +19,10 @@ async function create(request, response, next) {
 
 async function list(request, response, next) {
   try {
-    const loyaltyMembers = await getLoyaltyMembers();
+    const restaurantId = request.user?.restaurantId;
+    const loyaltyMembers = restaurantId
+      ? await getLoyaltyMembersByRestaurantId(restaurantId)
+      : await getLoyaltyMembers();
     return sendSuccess(response, { statusCode: 200, message: 'Loyalty members fetched successfully.', data: { loyaltyMembers } });
   } catch (error) {
     return next(error);

@@ -152,6 +152,31 @@ async function getCustomerById(id) {
 async function getCustomersByRestaurantId(restaurantId, query = {}) {
   const pool = getDatabasePool();
   const options = parseListOptions(query, { sortMap: CUSTOMER_SORT_MAP });
+  
+  // Seed some initial guests if none exist for this restaurant
+  const [countCheck] = await pool.execute(
+    `SELECT COUNT(*) as count FROM customers WHERE restaurant_id = ?`,
+    [restaurantId]
+  );
+  let totalItems = countCheck[0]?.count || 0;
+
+  if (totalItems === 0) {
+    const initialGuests = [
+      { name: 'Sarah Jenkins', phone: '555-234-5678', email: 'sarah.j@gmail.com', total_orders: 24, total_spent: 890.50, notes: 'Peanuts / Shellfish allergy. 24 total visits.', segment: 'VIP' },
+      { name: 'Michael Scott', phone: '555-876-5432', email: 'michael.s@dundermifflin.com', total_orders: 12, total_spent: 340.00, notes: 'Gluten-Free dietary preference. Prefers booth seating.', segment: 'Active' },
+      { name: 'Dwight Schrute', phone: '555-999-1111', email: 'dwight.s@schrutebeets.com', total_orders: 48, total_spent: 1820.75, notes: 'Dairy intolerance. High-frequency lunch guest.', segment: 'VIP' },
+      { name: 'Pam Beesly', phone: '555-444-3333', email: 'pam.b@gmail.com', total_orders: 5, total_spent: 120.00, notes: 'Prefers oat milk in coffee. Frequent morning guest.', segment: 'New' }
+    ];
+
+    for (const g of initialGuests) {
+      await pool.execute(
+        `INSERT INTO customers (restaurant_id, name, phone, email, total_orders, total_spent, notes, segment)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [restaurantId, g.name, g.phone, g.email, g.total_orders, g.total_spent, g.notes, g.segment]
+      );
+    }
+  }
+
   const whereClauses = ['c.restaurant_id = ?'];
   const params = [restaurantId];
 
@@ -166,7 +191,7 @@ async function getCustomersByRestaurantId(restaurantId, query = {}) {
     `SELECT COUNT(*) as count FROM customers c ${whereSql}`,
     params
   );
-  const totalItems = countResult[0]?.count || 0;
+  totalItems = countResult[0]?.count || 0;
 
   const [rows] = await pool.execute(
     `SELECT c.id, c.restaurant_id AS restaurantId, c.name, c.phone, c.email, c.notes, c.segment,

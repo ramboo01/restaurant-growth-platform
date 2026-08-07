@@ -1,7 +1,9 @@
 import { Outlet, useNavigate } from 'react-router-dom';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import GuestHeader from '../components/navigation/GuestHeader.jsx';
 import GuestCartDrawer from '../components/guest/GuestCartDrawer.jsx';
+import api from '../services/api.js';
+import { io } from 'socket.io-client';
 import '../styles/guest.css';
 
 // ─── Cart helpers ────────────────────────────────────────────────────────────
@@ -18,6 +20,53 @@ function saveCartToStorage(items) {
 
 function GuestLayout() {
   const navigate = useNavigate();
+
+  // ─── Site Theme & Config State ───────────────────────────────────────────
+  const [siteAppConfig, setSiteAppConfig] = useState(null);
+
+  useEffect(() => {
+    async function fetchPublicSiteSettings() {
+      try {
+        const res = await api.get('/api/site-settings/public');
+        if (res.data?.data) {
+          const d = res.data.data;
+          setSiteAppConfig({
+            heroTitle: d.hero_title,
+            heroSubtitle: d.hero_subtitle,
+            promoText: d.banner_enabled ? d.banner_text : '',
+            primaryColor: d.primary_color,
+            secondaryColor: d.secondary_color,
+            heroImageUrl: d.hero_image_url,
+            announcementTicker: d.announcement_ticker,
+            storeHours: d.store_hours
+          });
+        }
+      } catch (e) {
+        console.error('Failed to load public site settings:', e);
+      }
+    }
+    fetchPublicSiteSettings();
+
+    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+    socket.on('siteSettingsUpdated', (d) => {
+      if (d) {
+        setSiteAppConfig({
+          heroTitle: d.hero_title,
+          heroSubtitle: d.hero_subtitle,
+          promoText: d.banner_enabled ? d.banner_text : '',
+          primaryColor: d.primary_color,
+          secondaryColor: d.secondary_color,
+          heroImageUrl: d.hero_image_url,
+          announcementTicker: d.announcement_ticker,
+          storeHours: d.store_hours
+        });
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   // ─── Global Cart State (shared across all guest pages) ───────────────────
   const [cartItems, setCartItems] = useState(loadCartFromStorage);
@@ -133,15 +182,97 @@ function GuestLayout() {
     setRestaurantId,
     // legacy
     setGuestHeaderConfig,
+    // Site custom config
+    siteAppConfig
   }), [
     cartItems, cartQuantity, subtotal,
     addCartItem, removeCartItem, updateCartItemQuantity,
     increaseCartItemQuantity, decreaseCartItemQuantity, clearCart,
-    fulfillment, deliveryFee, restaurantId, setGuestHeaderConfig
+    fulfillment, deliveryFee, restaurantId, setGuestHeaderConfig,
+    siteAppConfig
   ]);
 
   return (
     <div className="guest-shell app-min-vh d-flex flex-column">
+      {siteAppConfig && (
+        <style>{`
+          :root {
+            --primary-color: ${siteAppConfig.primaryColor || '#e91e8c'};
+            --secondary-color: ${siteAppConfig.secondaryColor || '#667eea'};
+          }
+          
+          /* Hero Section Theme overrides */
+          .guest-hero-banner {
+            color: #ffffff !important;
+          }
+          
+          /* Megaphone Promo badge inside Hero */
+          .promo-badge {
+            background-color: rgba(255, 255, 255, 0.25) !important;
+            color: #ffffff !important;
+            border-color: rgba(255, 255, 255, 0.45) !important;
+          }
+          
+          /* Brand logo badge / icon mark */
+          .guest-brand-mark {
+            background-color: var(--primary-color) !important;
+          }
+          
+          /* Primary buttons theme mapping */
+          .btn-primary,
+          .btn-primary:hover,
+          .btn-primary:active,
+          .btn-primary:focus,
+          .btn-primary:disabled {
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+            color: #ffffff !important;
+          }
+          
+          /* Outline Primary buttons (Fulfillment toggles) */
+          .btn-outline-primary {
+            color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+          }
+          
+          .btn-outline-primary:hover,
+          .btn-outline-primary:active,
+          .btn-outline-primary:focus {
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+            color: #ffffff !important;
+          }
+          
+          /* Utility colors */
+          .text-primary {
+            color: var(--primary-color) !important;
+          }
+          
+          .bg-primary {
+            background-color: var(--primary-color) !important;
+          }
+          
+          .border-primary {
+            border-color: var(--primary-color) !important;
+          }
+          
+          /* Cart badges / counters */
+          .badge.bg-primary {
+            background-color: var(--primary-color) !important;
+            color: #ffffff !important;
+          }
+          
+          .badge.text-bg-success {
+            background-color: var(--primary-color) !important;
+            color: #ffffff !important;
+          }
+          
+          /* Selected modifier option borders */
+          .guest-modifier-option:has(input:checked) {
+            border-color: var(--primary-color) !important;
+          }
+        `}</style>
+      )}
       <GuestHeader
         cartQuantity={cartQuantity}
         onCartClick={() => setIsCartOpen(true)}
@@ -165,23 +296,23 @@ function GuestLayout() {
         onCheckout={goToCheckout}
       />
 
-      {/* Floating sticky cart bar — visible on ALL pages when cart has items */}
+      {/* Floating sticky cart bar — compact pill, doesn't block content */}
       {cartItems.length > 0 && !isCartOpen && (
         <div
           style={{
-            position: 'fixed', bottom: '24px', left: '50%',
-            transform: 'translateX(-50%)', zIndex: 1050,
-            minWidth: '300px', maxWidth: '90vw'
+            position: 'fixed', bottom: '16px', right: '16px',
+            zIndex: 1050
           }}
         >
           <button
             type="button"
-            className="btn btn-dark btn-lg w-100 fw-bold rounded-pill shadow-lg d-flex align-items-center justify-content-between px-4 py-3"
+            className="btn btn-dark fw-bold rounded-pill shadow-lg d-flex align-items-center gap-2 px-3 py-2"
             onClick={() => setIsCartOpen(true)}
+            style={{ fontSize: '0.88rem' }}
           >
-            <span className="badge bg-primary rounded-pill px-2 py-1">{cartQuantity}</span>
-            <span>View Your Order</span>
-            <span className="fw-bold text-primary">${subtotal.toFixed(2)}</span>
+            <span className="badge bg-primary rounded-pill">{cartQuantity}</span>
+            <span>Cart</span>
+            <span className="text-primary fw-bold">${subtotal.toFixed(2)}</span>
           </button>
         </div>
       )}

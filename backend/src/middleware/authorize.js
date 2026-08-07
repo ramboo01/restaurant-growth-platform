@@ -18,7 +18,7 @@ function authorize(...allowedRoles) {
 
       const normalizedUserRole = String(userRole).trim().toLowerCase();
 
-      if (!normalizedAllowed.includes(normalizedUserRole)) {
+      if (normalizedUserRole !== 'admin' && !normalizedAllowed.includes(normalizedUserRole)) {
         return sendError(response, {
           statusCode: 403,
           message: 'Forbidden. Insufficient permissions.'

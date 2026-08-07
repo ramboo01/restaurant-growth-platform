@@ -138,6 +138,20 @@ async function getCateringInstallments(request, response, next) {
   }
 }
 
+async function getFranchiseComparison(request, response, next) {
+  try {
+    const userId = request.user?.sub || request.user?.id;
+    const comparison = await franchiseService.getFranchiseComparisonData(userId);
+    return sendSuccess(response, {
+      statusCode: 200,
+      message: 'Franchise comparison fetched successfully.',
+      data: comparison
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   getMyRestaurants,
   updateStatus,
@@ -147,5 +161,6 @@ module.exports = {
   switchRestaurant,
   getFinancialSettings,
   saveFinancialSettings,
-  getCateringInstallments
+  getCateringInstallments,
+  getFranchiseComparison
 };

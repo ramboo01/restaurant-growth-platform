@@ -1,39 +1,43 @@
 import { guestCustomers } from './guestCrmData.js';
 
 export const loyaltyRules = [
-  '₹100 = 10 Points',
-  'Birthday Bonus',
-  'Referral Bonus'
+  '$1 spent = 10 Points',
+  'Birthday Bonus (Coming Soon)',
+  'Referral Bonus (Coming Soon)'
 ];
 
 export const initialRewards = [
   {
     id: 'reward-001',
-    name: 'Free Side',
-    pointsRequired: 120,
-    description: 'Redeem for any side item.',
+    name: '5 Dollar Discount',
+    pointsRequired: 50,
+    discountAmount: 5.00,
+    description: 'Get $5 off your next order.',
     status: 'Active'
   },
   {
     id: 'reward-002',
-    name: 'Free Drink',
-    pointsRequired: 90,
-    description: 'Redeem for a house beverage.',
+    name: '10 Dollar Discount',
+    pointsRequired: 100,
+    discountAmount: 10.00,
+    description: 'Save $10 on your next order.',
     status: 'Active'
   },
   {
     id: 'reward-003',
-    name: '10% Off Next Order',
+    name: '15 Dollar Discount',
     pointsRequired: 150,
-    description: 'Discount applied to the next guest order.',
+    discountAmount: 15.00,
+    description: 'Enjoy $15 off your order!',
     status: 'Active'
   },
   {
     id: 'reward-004',
-    name: 'Free Dessert',
-    pointsRequired: 180,
-    description: 'Redeem for a brownie or cheesecake.',
-    status: 'Inactive'
+    name: '25 Dollar Discount',
+    pointsRequired: 250,
+    discountAmount: 25.00,
+    description: 'Our best reward — $25 off your order!',
+    status: 'Active'
   }
 ];
 

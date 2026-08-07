@@ -7,6 +7,9 @@ const router = express.Router();
 // Get all restaurants this owner has access to
 router.get('/my-restaurants', franchiseController.getMyRestaurants);
 
+// Get franchise comparison data
+router.get('/comparison-data', franchiseController.getFranchiseComparison);
+
 // Update a restaurant's status (Active/Inactive/Suspended)
 router.patch('/:restaurantId/status', franchiseController.updateStatus);
 

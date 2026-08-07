@@ -1,155 +1,161 @@
 import { useState, useEffect } from 'react';
+import api from '../../services/api.js';
 
 export default function AdminFinancialCompliancePage() {
-  const [payouts, setPayouts] = useState([]);
+  const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    fetchPayouts();
+    fetchStoreFinancials();
   }, []);
 
-  async function fetchPayouts() {
+  async function fetchStoreFinancials() {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/financial/payouts', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const json = await res.json();
-      if (json.data) {
-        setPayouts(json.data);
+      const res = await api.get('/api/admin/financial/payouts');
+      if (res?.data?.data) {
+        setStores(res.data.data);
       }
     } catch (err) {
-      console.error('Failed to fetch store payouts:', err);
+      console.error('Failed to fetch store financials:', err);
+      setMessage('❌ Failed to load store financial ledger from database.');
     } finally {
       setLoading(false);
     }
   }
 
-  const handleReleasePayout = async (id) => {
-    try {
-      setMessage('');
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/financial/release-payout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ id })
-      });
-      const json = await res.json();
-      if (res.ok) {
-        setMessage('🎉 Settlement payout released to store bank account! Audit log generated.');
-        fetchPayouts();
-      } else {
-        setMessage(`❌ ${json.message || 'Payout release failed.'}`);
-      }
-    } catch (err) {
-      setMessage('❌ Failed to release payout.');
-    }
-  };
-
-  const totalGross = payouts.reduce((sum, p) => sum + Number(p.gross_sales || 0), 0);
-  const totalFees = payouts.reduce((sum, p) => sum + Number(p.platform_fee || 0), 0);
-  const totalNet = payouts.reduce((sum, p) => sum + Number(p.net_payout || 0), 0);
+  const totalGross = stores.reduce((sum, s) => sum + Number(s.gross_sales || 0), 0);
+  const totalFees = stores.reduce((sum, s) => sum + Number(s.platform_fee || 0), 0);
+  const totalNet = stores.reduce((sum, s) => sum + Number(s.net_payout || 0), 0);
+  const totalOrdersCount = stores.reduce((sum, s) => sum + Number(s.total_orders || 0), 0);
 
   return (
     <div className="container-fluid py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      {/* Top Title & Refresh */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
-          <h2 className="fw-bold m-0 text-dark">
-            💳 Financial Compliance & Store Settlement Monitor (ADM-005)
+          <h2 className="fw-bold m-0 text-dark d-flex align-items-center gap-2">
+            <i className="bi bi-bank2 text-primary"></i> Real Store Revenue &amp; Financial Ledger (ADM-005)
           </h2>
           <p className="text-secondary small m-0">
-            Platform revenue ledger: Weekly store settlement calculations, tax withholding audit, and payout release console.
+            Real-time financial performance and commission ledger across all registered platform stores.
           </p>
         </div>
-        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={fetchPayouts}>
-          <i className="bi bi-arrow-clockwise me-1" /> Refresh Financial Ledger
+        <button
+          type="button"
+          className="btn btn-outline-secondary btn-sm fw-semibold d-inline-flex align-items-center gap-1 shadow-sm"
+          onClick={fetchStoreFinancials}
+        >
+          <i className="bi bi-arrow-clockwise" /> Refresh Financial Ledger
         </button>
       </div>
 
       {message && (
-        <div className={`alert ${message.startsWith('🎉') ? 'alert-success' : 'alert-danger'} shadow-sm py-2 px-3 mb-4`}>
-          {message}
+        <div className={`alert ${message.startsWith('🎉') ? 'alert-success' : 'alert-danger'} shadow-sm py-2.5 px-3 mb-4 d-flex align-items-center gap-2`} role="alert">
+          <i className={`bi bi-${message.startsWith('🎉') ? 'check-circle-fill text-success' : 'exclamation-circle-fill text-danger'} fs-5`}></i>
+          <div>{message}</div>
         </div>
       )}
 
       {/* Financial Overview Metrics */}
       <div className="row g-3 mb-4">
-        <div className="col-md-4">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-primary">
-            <span className="text-secondary small fw-semibold">Total Gross Store Sales</span>
-            <div className="fs-2 fw-extrabold text-primary mt-1">${totalGross.toFixed(2)}</div>
-            <span className="text-muted small">Aggregated store revenue</span>
+        <div className="col-12 col-md-4">
+          <div className="card border-0 shadow-sm rounded-4 p-3.5 bg-white border-start border-4 border-primary">
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <span className="text-secondary small fw-bold text-uppercase">Total Real Store Sales</span>
+              <span className="badge bg-primary bg-opacity-10 text-primary">{totalOrdersCount} Total Orders</span>
+            </div>
+            <div className="fs-2 fw-extrabold text-primary">${totalGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <span className="text-muted extra-small">Live aggregated revenue from all platform restaurants</span>
           </div>
         </div>
-        <div className="col-md-4">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-success">
-            <span className="text-secondary small fw-semibold">Platform Commission Fee (5%)</span>
-            <div className="fs-2 fw-extrabold text-success mt-1">${totalFees.toFixed(2)}</div>
-            <span className="text-muted small">Platform gross earnings</span>
+        <div className="col-12 col-md-4">
+          <div className="card border-0 shadow-sm rounded-4 p-3.5 bg-white border-start border-4 border-success">
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <span className="text-secondary small fw-bold text-uppercase">Platform Commission (5%)</span>
+              <span className="badge bg-success bg-opacity-10 text-success">Platform Revenue</span>
+            </div>
+            <div className="fs-2 fw-extrabold text-success">${totalFees.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <span className="text-muted extra-small">Platform earnings based on 5% platform commission</span>
           </div>
         </div>
-        <div className="col-md-4">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-dark">
-            <span className="text-secondary small fw-semibold">Net Store Disbursed</span>
-            <div className="fs-2 fw-extrabold text-dark mt-1">${totalNet.toFixed(2)}</div>
-            <span className="text-muted small">Net payout after taxes & fees</span>
+        <div className="col-12 col-md-4">
+          <div className="card border-0 shadow-sm rounded-4 p-3.5 bg-white border-start border-4 border-dark">
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <span className="text-secondary small fw-bold text-uppercase">Total Net Store Earnings</span>
+              <span className="badge bg-dark bg-opacity-10 text-dark">95% Store Share</span>
+            </div>
+            <div className="fs-2 fw-extrabold text-dark">${totalNet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <span className="text-muted extra-small">Aggregated net earnings payable to restaurant owners</span>
           </div>
         </div>
       </div>
 
-      {/* Store Payout Settlement Table */}
+      {/* Real Store Sales Table */}
       <div className="card border-0 shadow-sm rounded-4 p-4 bg-white">
-        <h5 className="fw-bold mb-3 border-bottom pb-2 text-dark">
-          🏦 Store Weekly Settlement Payout Queue
-        </h5>
+        <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+          <h5 className="fw-bold text-dark m-0">
+            🏬 Registered Platform Stores &amp; Sales Summary ({stores.length})
+          </h5>
+          <span className="badge bg-light text-dark border extra-small">Live Database Records</span>
+        </div>
 
         {loading ? (
-          <div className="text-center py-4 text-muted small">Loading financial ledger...</div>
-        ) : payouts.length === 0 ? (
-          <div className="text-center py-4 text-muted small">No store payouts found.</div>
+          <div className="text-center py-5 text-muted small">
+            <div className="spinner-border spinner-border-sm text-primary mb-2"></div>
+            <div>Loading real store financial data from database...</div>
+          </div>
+        ) : stores.length === 0 ? (
+          <div className="text-center py-5 text-muted">
+            <i className="bi bi-shop display-4 text-secondary mb-2 d-block"></i>
+            <h6 className="fw-bold text-dark">No Restaurants Found in Database</h6>
+            <p className="small m-0">No active restaurants found in the database.</p>
+          </div>
         ) : (
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
+              <thead className="table-light text-uppercase small text-muted">
                 <tr>
-                  <th>Store Name</th>
-                  <th>Settlement Period</th>
-                  <th>Gross Sales</th>
+                  <th className="ps-3">Restaurant Name</th>
+                  <th>Contact Email / Location</th>
+                  <th className="text-center">Total Orders</th>
+                  <th>Real Gross Sales</th>
                   <th>Platform Fee (5%)</th>
-                  <th>Tax Withheld</th>
-                  <th>Net Store Payout</th>
-                  <th>Payout Status</th>
-                  <th>Disbursement Action</th>
+                  <th>Net Store Share (95%)</th>
+                  <th className="pe-3 text-end">Store Status</th>
                 </tr>
               </thead>
               <tbody>
-                {payouts.map((payout) => (
-                  <tr key={payout.id}>
-                    <td className="fw-bold text-dark">{payout.store_name}</td>
-                    <td className="small text-secondary">{payout.payout_period}</td>
-                    <td className="fw-semibold">${Number(payout.gross_sales).toFixed(2)}</td>
-                    <td className="text-danger">-${Number(payout.platform_fee).toFixed(2)}</td>
-                    <td className="text-muted">-${Number(payout.tax_withheld).toFixed(2)}</td>
-                    <td className="fw-bold text-success fs-6">${Number(payout.net_payout).toFixed(2)}</td>
-                    <td>
-                      <span className={`badge ${payout.status === 'Released' ? 'bg-success' : 'bg-warning text-dark'}`}>
-                        {payout.status}
+                {stores.map((store) => (
+                  <tr key={store.id}>
+                    <td className="ps-3 fw-bold text-dark">
+                      <i className="bi bi-shop me-2 text-primary"></i>
+                      {store.store_name}
+                      <div className="text-muted extra-small font-monospace">ID #{store.id}</div>
+                    </td>
+                    <td className="small text-secondary">
+                      <div>{store.store_email}</div>
+                      <div className="text-muted extra-small">{store.store_address}</div>
+                    </td>
+                    <td className="text-center fw-semibold fs-6">
+                      <span className="badge bg-light text-dark border px-2.5 py-1">
+                        {store.total_orders} orders
                       </span>
                     </td>
-                    <td>
-                      {payout.status !== 'Released' ? (
-                        <button
-                          type="button"
-                          className="btn btn-success btn-sm fw-bold shadow-sm"
-                          onClick={() => handleReleasePayout(payout.id)}
-                        >
-                          <i className="bi bi-bank me-1" /> Release Payout
-                        </button>
-                      ) : (
-                        <span className="text-muted small">Disbursed</span>
-                      )}
+                    <td className="fw-bold text-dark fs-6">
+                      ${Number(store.gross_sales).toFixed(2)}
+                    </td>
+                    <td className="text-danger fw-semibold">
+                      -${Number(store.platform_fee).toFixed(2)}
+                    </td>
+                    <td className="fw-bold text-success fs-6">
+                      ${Number(store.net_payout).toFixed(2)}
+                    </td>
+                    <td className="pe-3 text-end">
+                      <span className={`badge ${store.status === 'Active' ? 'bg-success' : 'bg-secondary'} px-2.5 py-1`}>
+                        {store.status}
+                      </span>
                     </td>
                   </tr>
                 ))}

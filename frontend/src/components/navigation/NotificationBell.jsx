@@ -1,10 +1,12 @@
 import { useContext, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import api from '../../services/api';
 
 function NotificationBell() {
   const { user } = useContext(AuthContext);
+  const location = useLocation();
   const socketContext = useSocket();
   const socket = socketContext?.socket;
 
@@ -14,6 +16,11 @@ function NotificationBell() {
   const [selectedNotif, setSelectedNotif] = useState(null);
   const [claimedCode, setClaimedCode] = useState('');
 
+  // Hide bell on Admin panel page and Driver portal
+  const isAdminPage = location.pathname.startsWith('/admin');
+  const isDriverPage = location.pathname.startsWith('/driver');
+  if (isAdminPage || isDriverPage) return null;
+
   const fetchNotifications = async () => {
     try {
       const response = await api.get('/api/notifications', {
@@ -22,8 +29,10 @@ function NotificationBell() {
 
       const list = response.data?.data?.items || response.data?.data || response.data || [];
       const notifArray = Array.isArray(list) ? list : [];
-      setNotifications(notifArray);
-      setUnreadCount(notifArray.filter((n) => !n.isRead && !n.is_read).length);
+      // Only show unread notifications in the list
+      const unreadOnly = notifArray.filter((n) => !n.isRead && !n.is_read);
+      setNotifications(unreadOnly);
+      setUnreadCount(unreadOnly.length);
     } catch (err) {
       console.error('[NotificationBell] Failed to fetch notifications:', err);
     }
@@ -37,7 +46,11 @@ function NotificationBell() {
     // Socket.IO real-time listener for live broadcasts & status updates
     const handleBroadcast = (data) => {
       console.log('[NotificationBell] Real-time notification received:', data);
-      setNotifications((prev) => [data, ...prev]);
+      // Only add if not already present and unread
+      setNotifications((prev) => {
+        if (prev.find((n) => n.id === data.id)) return prev;
+        return [data, ...prev];
+      });
       setUnreadCount((c) => c + 1);
     };
 
@@ -56,8 +69,10 @@ function NotificationBell() {
     if (e) e.stopPropagation();
     try {
       await api.patch('/api/notifications/read-all');
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true, is_read: true })));
+      // Clear all from list since we only show unread
+      setNotifications([]);
       setUnreadCount(0);
+      setIsOpen(false);
     } catch (err) {
       console.error('Failed to mark notifications read:', err);
     }
@@ -70,9 +85,8 @@ function NotificationBell() {
     if (!n.isRead && !n.is_read) {
       try {
         await api.patch(`/api/notifications/${n.id}/read`);
-        setNotifications((prev) =>
-          prev.map((item) => (item.id === n.id ? { ...item, isRead: true, is_read: true } : item))
-        );
+        // Remove from list since we only show unread
+        setNotifications((prev) => prev.filter((item) => item.id !== n.id));
         setUnreadCount((c) => Math.max(0, c - 1));
       } catch (err) {
         console.error('Failed to mark notification read:', err);

@@ -2,12 +2,14 @@ import { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { restaurantService } from '../../services/restaurantService.js';
+import api from '../../services/api.js';
 
 function SettingsPage() {
   const { user } = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [integrations, setIntegrations] = useState({ channels: [], seoListings: [] });
 
   const [settings, setSettings] = useState({
     restaurantName: '',
@@ -81,6 +83,20 @@ function SettingsPage() {
     }
     loadSettings();
   }, [user]);
+
+  useEffect(() => {
+    async function loadIntegrations() {
+      try {
+        const res = await api.get('/api/owner/integrations');
+        if (res?.data?.data) {
+          setIntegrations(res.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to load integrations:', err);
+      }
+    }
+    loadIntegrations();
+  }, []);
 
   function handleChange(event) {
     const { name, value, type, checked } = event.target;
@@ -297,6 +313,50 @@ function SettingsPage() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </div>
+
+                {/* Connected Integrations - LIVE from Admin Ecosystem */}
+                <div className="card border-0 guest-info-card border-start border-4 border-primary">
+                  <div className="card-body p-4">
+                    <h2 className="h5 text-primary mb-3">
+                      <i className="bi bi-plug me-2"></i> Connected Integrations
+                    </h2>
+                    <p className="text-muted small mb-3">
+                      These channels and SEO directories are configured by your platform administrator.
+                    </p>
+                    
+                    {integrations.channels.length === 0 && integrations.seoListings.length === 0 ? (
+                      <div className="text-center py-3 text-muted">
+                        <i className="bi bi-plug fs-3 d-block mb-2 text-secondary" />
+                        <small>No external integrations configured by admin yet.</small>
+                      </div>
+                    ) : (
+                      <div className="vstack gap-2">
+                        {integrations.channels.map((ch) => (
+                          <div key={`ch-${ch.id}`} className="d-flex justify-content-between align-items-center border rounded-3 px-3 py-2">
+                            <div>
+                              <span className="fw-semibold text-dark small">{ch.channel_name}</span>
+                              <span className="badge bg-light text-dark border ms-2 small">{ch.channel_type}</span>
+                            </div>
+                            <span className={`badge ${ch.connection_status === 'Connected' ? 'bg-success' : 'bg-secondary'} px-2 py-1`}>
+                              {ch.connection_status === 'Connected' ? '✅ Connected' : '⏳ Pending Setup'}
+                            </span>
+                          </div>
+                        ))}
+                        {integrations.seoListings.map((seo) => (
+                          <div key={`seo-${seo.id}`} className="d-flex justify-content-between align-items-center border rounded-3 px-3 py-2">
+                            <div>
+                              <span className="fw-semibold text-dark small">{seo.platform_name}</span>
+                              <span className="badge bg-light text-dark border ms-2 small">{seo.listing_category}</span>
+                            </div>
+                            <span className={`badge ${seo.connection_status === 'Connected' ? 'bg-success' : 'bg-secondary'} px-2 py-1`}>
+                              {seo.connection_status === 'Connected' ? '✅ Connected' : '⏳ Pending Setup'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

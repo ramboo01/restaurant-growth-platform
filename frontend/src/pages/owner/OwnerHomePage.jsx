@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react';
+import { useRestaurant } from '../../context/RestaurantContext.jsx';
 import AttentionCard from '../../components/dashboard/AttentionCard.jsx';
 import MetricCard from '../../components/dashboard/MetricCard.jsx';
 import RecentActivity from '../../components/dashboard/RecentActivity.jsx';
@@ -26,6 +27,7 @@ function getGreeting() {
 
 function OwnerHomePage() {
   const { user } = useContext(AuthContext);
+  const { activeRestaurantId } = useRestaurant();
   const { socket } = useSocket();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,14 +37,14 @@ function OwnerHomePage() {
 
   // Fetch restaurant name for subtitle
   useEffect(() => {
-    if (!user?.restaurantId) return;
-    api.get(`/api/restaurants/${user.restaurantId}`)
+    if (!activeRestaurantId) return;
+    api.get(`/api/restaurants/${activeRestaurantId}`)
       .then((res) => {
         const name = res.data?.data?.restaurant?.name || res.data?.data?.name || null;
         if (name) setRestaurantName(name);
       })
       .catch(() => { /* fallback silently */ });
-  }, [user?.restaurantId]);
+  }, [activeRestaurantId]);
 
   const loadDashboard = async () => {
     if (inFlightRef.current) {
@@ -91,7 +93,7 @@ function OwnerHomePage() {
     return () => {
       active = false;
     };
-  }, [user?.id]);
+  }, [user?.id, activeRestaurantId]);
 
   // Live real-time socket sync for dashboard cards
   useEffect(() => {
@@ -160,6 +162,14 @@ function OwnerHomePage() {
           to: '/owner/inventory'
         },
         {
+          id: 'catering-inquiries',
+          title: 'Catering inquiries',
+          description: `${analytics.cateringNewInquiries ?? 0} inquiries need review`,
+          severity: (analytics.cateringNewInquiries ?? 0) > 0 ? 'warning' : 'info',
+          actionLabel: 'Manage catering',
+          to: '/owner/catering'
+        },
+        {
           id: 'driver-capacity',
           title: 'Driver capacity',
           description: `${analytics.totalDrivers ?? 0} drivers currently active`,
@@ -220,6 +230,12 @@ function OwnerHomePage() {
           label: 'Total Orders',
           value: String(analytics.totalOrders ?? 0),
           icon: 'bi-receipt'
+        },
+        {
+          id: 'catering-events',
+          label: 'Catering Events',
+          value: String(analytics.cateringOrdersCount ?? 0),
+          icon: 'bi-briefcase'
         },
         {
           id: 'customers',

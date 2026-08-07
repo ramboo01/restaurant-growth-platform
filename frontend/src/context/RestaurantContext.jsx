@@ -26,16 +26,43 @@ export function RestaurantProvider({ children }) {
 
     // Restore saved active restaurant or use primary/user default
     const savedActive = localStorage.getItem('activeRestaurantId');
-    if (savedActive && accessList.some(r => String(r.id) === savedActive)) {
+    if (savedActive) {
       setActiveRestaurantId(Number(savedActive));
     } else {
       const primary = accessList.find(r => r.isPrimary);
       setActiveRestaurantId(primary ? primary.id : (user.restaurantId || 1));
     }
 
-    // Persist for page refresh
-    if (accessList.length > 0) {
-      localStorage.setItem('accessibleRestaurants', JSON.stringify(accessList));
+    // If owner or admin, fetch the full list of restaurants to populate the dropdown automatically
+    if (user.role === 'Owner' || user.role === 'Admin') {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      fetch(`${baseUrl}/api/public/restaurants`)
+        .then((res) => res.json())
+        .then((res) => {
+          const list = res?.data?.restaurants || [];
+          if (list.length > 0) {
+            const mapped = list.map((r) => ({
+              id: r.id,
+              name: r.name,
+              status: r.status || 'Active',
+              isPrimary: r.id === user.restaurantId
+            }));
+            setRestaurants(mapped);
+            localStorage.setItem('accessibleRestaurants', JSON.stringify(mapped));
+            
+            const currentSaved = localStorage.getItem('activeRestaurantId');
+            if (!currentSaved) {
+              const primary = mapped.find((r) => r.isPrimary) || mapped[0];
+              setActiveRestaurantId(primary.id);
+              localStorage.setItem('activeRestaurantId', String(primary.id));
+            }
+          }
+        })
+        .catch((err) => console.error('Failed to fetch restaurants list:', err));
+    } else {
+      if (accessList.length > 0) {
+        localStorage.setItem('accessibleRestaurants', JSON.stringify(accessList));
+      }
     }
   }, [user]);
 

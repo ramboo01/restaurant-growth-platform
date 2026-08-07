@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useContext, useRef, useCallback } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { guestStorefront } from '../../data/guestStorefrontData.js';
 import { placePublicOrder } from '../../services/orderService.js';
 import { loyaltyService } from '../../services/loyaltyService.js';
@@ -17,6 +17,7 @@ function buildOrderNumber() {
 
 function GuestCheckoutPage() {
   const { user } = useContext(AuthContext);
+  const { clearCart } = useOutletContext();
   const location = useLocation();
   const navigate = useNavigate();
   // Read cart from router state first, then fall back to localStorage for refresh-safety
@@ -470,8 +471,8 @@ function GuestCheckoutPage() {
       const createdOrder = await placePublicOrder(payload);
       localStorage.removeItem('activePromoCode');
       localStorage.removeItem('activeLoyaltyReward');
-      // ✅ Clear cart from localStorage after successful order
-      localStorage.removeItem('rgp_cart');
+      // ✅ Clear cart from localStorage and context after successful order
+      clearCart();
       try {
         const recent = JSON.parse(localStorage.getItem('recentOrders') || '[]');
         if (!recent.includes(createdOrder.orderNumber)) {
@@ -758,7 +759,7 @@ function GuestCheckoutPage() {
                       {redeemableRewards.length > 0 ? (
                         <div className="mt-4 border-top border-secondary border-opacity-30 pt-3">
                           <label className="form-label small text-secondary fw-semibold mb-2" htmlFor="redeemRewardSelect">
-                            <i className="bi bi-ticket-perforated me-1"></i> Redeem an Available Reward:
+                            <i className="bi bi-ticket-perforated me-1"></i> Apply a Discount Reward:
                           </label>
                           <select
                             id="redeemRewardSelect"
@@ -774,17 +775,20 @@ function GuestCheckoutPage() {
                               }
                             }}
                           >
-                            <option value="" className="bg-dark text-white">-- Select Reward to Redeem --</option>
-                            {redeemableRewards.map(rew => (
-                              <option key={rew.id} value={rew.id} className="bg-dark text-white">
-                                {rew.name} ({rew.pointsRequired} pts)
-                              </option>
-                            ))}
+                            <option value="" className="bg-dark text-white">-- Select Discount Reward --</option>
+                            {redeemableRewards.map(rew => {
+                              const disc = Number(rew.discountAmount) || Math.max(1, Math.round((rew.pointsRequired || 0) * 0.10 * 100) / 100);
+                              return (
+                                <option key={rew.id} value={rew.id} className="bg-dark text-white">
+                                  {rew.name} — ${disc.toFixed(2)} OFF ({rew.pointsRequired} pts)
+                                </option>
+                              );
+                            })}
                           </select>
                         </div>
                       ) : (
                         <p className="small text-secondary mb-0 mt-3 pt-3 border-top border-secondary border-opacity-30">
-                          Earn 10 points for every $1 spent. You don't have enough points to redeem any rewards yet.
+                          Earn 10 points for every $1 spent. You don't have enough points to redeem any discounts yet.
                         </p>
                       )}
                     </div>

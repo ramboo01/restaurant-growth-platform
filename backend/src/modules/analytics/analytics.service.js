@@ -79,18 +79,42 @@ async function getDashboardAnalytics(restaurantId) {
     };
   });
 
+  let cateringCount = 0;
+  let cateringRevenue = 0;
+  let cateringNewInquiries = 0;
+
+  try {
+    const [[catData]] = await pool.execute(`
+      SELECT
+        COUNT(*) AS totalCateringOrders,
+        COALESCE(SUM(CASE WHEN status = 'New Inquiry' THEN 1 ELSE 0 END), 0) AS newInquiries,
+        COALESCE(SUM(CASE WHEN status NOT IN ('Declined', 'Cancelled') THEN paid_amount ELSE 0 END), 0) AS totalCateringRevenue
+      FROM catering_orders
+      WHERE restaurant_id = ?
+    `, [restaurantId]);
+
+    cateringCount = Number(catData?.totalCateringOrders) || 0;
+    cateringNewInquiries = Number(catData?.newInquiries) || 0;
+    cateringRevenue = Number(catData?.totalCateringRevenue) || 0;
+  } catch (err) {
+    console.error('[Analytics] Catering query error:', err.message);
+  }
+
   return {
     totalRestaurants: Number(restaurants.totalRestaurants) || 0,
     totalMenuItems: Number(menuItems.totalMenuItems) || 0,
     totalCategories: Number(categories.totalCategories) || 0,
-    totalOrders: Number(orders.totalOrders) || 0,
+    totalOrders: Number(orders.totalOrders) + cateringCount,
     pendingOrders: Number(orders.pendingOrders) || 0,
     acceptedOrders: Number(orders.acceptedOrders) || 0,
     preparingOrders: Number(orders.preparingOrders) || 0,
     readyOrders: Number(orders.readyOrders) || 0,
     completedOrders: Number(orders.completedOrders) || 0,
     cancelledOrders: Number(orders.cancelledOrders) || 0,
-    totalRevenue: Number(orders.totalRevenue) || 0,
+    totalRevenue: Number(orders.totalRevenue) + cateringRevenue,
+    cateringOrdersCount: cateringCount,
+    cateringRevenue,
+    cateringNewInquiries,
     totalStaff: Number(staff.totalStaff) || 0,
     totalDrivers: Number(drivers.totalDrivers) || 0,
     totalInventoryItems: Number(inventory.totalInventoryItems) || 0,

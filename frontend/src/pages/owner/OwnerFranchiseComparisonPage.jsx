@@ -1,11 +1,49 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { franchiseService } from '../../services/franchiseService.js';
+import LoadingState from '../../components/feedback/LoadingState.jsx';
 
 export default function OwnerFranchiseComparisonPage() {
-  const [stores] = useState([
-    { id: 1, name: 'Downtown Flagship', sales: 48500, laborCost: '26.2%', foodCost: '29.8%', auditScore: '98%', status: 'Top Performer' },
-    { id: 2, name: 'Uptown Bistro', sales: 34200, laborCost: '28.5%', foodCost: '31.2%', auditScore: '94%', status: 'Optimal' },
-    { id: 3, name: 'Westside Express', sales: 29800, laborCost: '32.1%', foodCost: '34.5%', auditScore: '89%', status: 'Cost Warning' }
-  ]);
+  const [stores, setStores] = useState([]);
+  const [summary, setSummary] = useState({ combinedSales: 0, avgLaborCost: '0%', avgAuditScore: '0%' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadComparisonData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await franchiseService.getComparisonData();
+      setStores(data.stores || []);
+      setSummary(data.summary || { combinedSales: 0, avgLaborCost: '0%', avgAuditScore: '0%' });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load franchise comparison data.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadComparisonData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container-fluid py-5">
+        <LoadingState message="Loading franchise comparison metrics..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container-fluid py-4">
+        <div className="alert alert-danger shadow-sm" role="alert">
+          <i className="bi bi-exclamation-triangle-fill me-2"></i> {error}
+          <button className="btn btn-sm btn-outline-danger float-end" onClick={loadComparisonData}>Retry</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid py-4">
@@ -24,21 +62,23 @@ export default function OwnerFranchiseComparisonPage() {
         <div className="col-md-4">
           <div className="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-primary">
             <span className="text-secondary small fw-semibold">Combined Multi-Store Sales</span>
-            <div className="fs-2 fw-extrabold text-primary mt-1">$112,500.00</div>
+            <div className="fs-2 fw-extrabold text-primary mt-1">
+              ${Number(summary.combinedSales).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
             <span className="text-muted small">Current month gross sales</span>
           </div>
         </div>
         <div className="col-md-4">
           <div className="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-success">
             <span className="text-secondary small fw-semibold">Average Franchise Labor Cost</span>
-            <div className="fs-2 fw-extrabold text-success mt-1">28.9%</div>
+            <div className="fs-2 fw-extrabold text-success mt-1">{summary.avgLaborCost}</div>
             <span className="text-muted small">Target threshold: &lt; 30%</span>
           </div>
         </div>
         <div className="col-md-4">
           <div className="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-warning">
             <span className="text-secondary small fw-semibold">Average Brand Audit Score</span>
-            <div className="fs-2 fw-extrabold text-dark mt-1">93.7%</div>
+            <div className="fs-2 fw-extrabold text-dark mt-1">{summary.avgAuditScore}</div>
             <span className="text-muted small">Compliance benchmark</span>
           </div>
         </div>
@@ -64,7 +104,7 @@ export default function OwnerFranchiseComparisonPage() {
               {stores.map((store) => (
                 <tr key={store.id}>
                   <td className="fw-bold text-dark">{store.name}</td>
-                  <td className="fw-bold text-primary">${store.sales.toLocaleString()}</td>
+                  <td className="fw-bold text-primary">${store.sales.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                   <td className="fw-semibold">{store.laborCost}</td>
                   <td className="fw-semibold">{store.foodCost}</td>
                   <td>
@@ -79,6 +119,11 @@ export default function OwnerFranchiseComparisonPage() {
                   </td>
                 </tr>
               ))}
+              {stores.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="text-center text-muted py-4">No franchise locations found.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

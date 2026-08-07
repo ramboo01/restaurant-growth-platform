@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import EmptyState from '../../components/feedback/EmptyState.jsx';
 import GuestItemDetailModal from '../../components/guest/GuestItemDetailModal.jsx';
@@ -20,9 +20,11 @@ function GuestHomePage() {
   const {
     cartItems, cartQuantity, subtotal, addCartItem: contextAddCartItem,
     increaseCartItemQuantity, decreaseCartItemQuantity, removeCartItem,
+    clearCart,
     openCart, setFulfillment: setLayoutFulfillment, fulfillment: layoutFulfillment,
     setDeliveryFee, restaurantId: layoutRestaurantId, setRestaurantId: setLayoutRestaurantId,
-    setGuestHeaderConfig
+    setGuestHeaderConfig,
+    siteAppConfig
   } = useOutletContext();
 
   const [restaurants, setRestaurants] = useState([]);
@@ -37,49 +39,7 @@ function GuestHomePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
   const [addedToastItem, setAddedToastItem] = useState(null);
-  const [siteAppConfig, setSiteAppConfig] = useState(null);
-
-  useEffect(() => {
-    async function fetchPublicSiteSettings() {
-      try {
-        const res = await api.get('/api/site-settings/public');
-        if (res.data?.data) {
-          const d = res.data.data;
-          setSiteAppConfig({
-            heroTitle: d.hero_title,
-            heroSubtitle: d.hero_subtitle,
-            promoText: d.banner_enabled ? d.banner_text : '',
-            primaryColor: d.primary_color,
-            secondaryColor: d.secondary_color,
-            announcementTicker: d.announcement_ticker,
-            storeHours: d.store_hours
-          });
-        }
-      } catch (e) {
-        console.error('Failed to load public site settings:', e);
-      }
-    }
-    fetchPublicSiteSettings();
-
-    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
-    socket.on('siteSettingsUpdated', (d) => {
-      if (d) {
-        setSiteAppConfig({
-          heroTitle: d.hero_title,
-          heroSubtitle: d.hero_subtitle,
-          promoText: d.banner_enabled ? d.banner_text : '',
-          primaryColor: d.primary_color,
-          secondaryColor: d.secondary_color,
-          announcementTicker: d.announcement_ticker,
-          storeHours: d.store_hours
-        });
-      }
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+  const toastTimerRef = useRef(null);
 
   // Load public restaurant catalog data on mount
   useEffect(() => {
@@ -170,7 +130,7 @@ function GuestHomePage() {
         icon: 'bi-egg-fried'
       })));
       setSelectedCategory('all');
-      setCartItems([]); // Reset cart when changing restaurant
+      clearCart(); // Reset cart when changing restaurant
     } catch (err) {
       setError(err.message || 'Failed to load restaurant menu.');
     } finally {
@@ -319,10 +279,11 @@ function GuestHomePage() {
 
   function addCartItem(configuredItem) {
     contextAddCartItem(configuredItem);
-    // Show quick toast — do NOT auto-open drawer so user can keep shopping
+    // Show quick toast — clear any existing timer first
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setAddedToastItem(configuredItem.itemName || 'Item');
     setSelectedItem(null);
-    setTimeout(() => setAddedToastItem(null), 2500);
+    toastTimerRef.current = setTimeout(() => setAddedToastItem(null), 2200);
   }
 
 
@@ -338,14 +299,20 @@ function GuestHomePage() {
       {/* Dynamic Hero Banner powered by Site & App Editor */}
       <section
         className={`guest-hero-banner py-4 py-md-5 px-3 text-center transition-all overflow-hidden ${
-          activeTheme === 'dark'
+          activeTheme === 'dark' || siteAppConfig?.heroImageUrl
             ? 'bg-dark text-white'
             : activeTheme === 'light'
             ? 'bg-white text-dark border-bottom'
             : 'bg-dark text-white'
         }`}
         style={{
-          background: activeTheme === 'glass' ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' : undefined,
+          background: siteAppConfig?.heroImageUrl && !siteAppConfig.heroImageUrl.includes('unsplash.com/photos/')
+            ? `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.65)), url(${siteAppConfig.heroImageUrl}) no-repeat center center / cover, linear-gradient(135deg, ${siteAppConfig.primaryColor || '#e91e8c'}, ${siteAppConfig.secondaryColor || '#667eea'})`
+            : siteAppConfig?.primaryColor && siteAppConfig?.secondaryColor
+            ? `linear-gradient(135deg, ${siteAppConfig.primaryColor}, ${siteAppConfig.secondaryColor})`
+            : activeTheme === 'glass'
+            ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+            : undefined,
           borderBottom: '1px solid rgba(255,255,255,0.1)'
         }}
       >
@@ -407,7 +374,9 @@ function GuestHomePage() {
                     value={selectedRestaurant?.id || ''}
                   >
                     {restaurants.map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
+                      <option key={r.id} value={r.id}>
+                        {r.name} {r.status === 'Suspended' ? '🔴 (Suspended)' : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -419,7 +388,13 @@ function GuestHomePage() {
                     {guestStorefront.rating} rating
                   </span>
                   <span className="badge text-bg-light border">{guestStorefront.reviewCount} reviews</span>
-                  <span className="badge text-bg-success">{guestStorefront.storeStatus}</span>
+                  {selectedRestaurant?.status === 'Suspended' ? (
+                    <span className="badge bg-danger text-white px-3 py-1 fw-bold">
+                      <i className="bi bi-slash-circle me-1" />Suspended / Not Accepting Orders
+                    </span>
+                  ) : (
+                    <span className="badge text-bg-success">{guestStorefront.storeStatus}</span>
+                  )}
                   <span className="badge text-bg-light border">
                     {guestStorefront.fulfillment.delivery.estimatedDelivery} delivery
                   </span>
@@ -493,33 +468,71 @@ function GuestHomePage() {
             </div>
           </section>
 
-          <section aria-labelledby="guest-menu-heading">
-            <div className="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-3">
+          {selectedRestaurant?.status === 'Suspended' && (
+            <div className="alert alert-danger d-flex align-items-center gap-3 border-0 shadow-sm rounded-3 py-3 px-4 mt-3 mb-0" role="alert">
+              <i className="bi bi-exclamation-triangle-fill fs-3 flex-shrink-0"></i>
               <div>
-                <h2 className="h4 mb-1" id="guest-menu-heading">
-                  Our Menu
-                </h2>
-                <p className="text-secondary mb-0">{filteredItems.length} menu items</p>
+                <h6 className="fw-bold mb-1">Store Temporarily Suspended</h6>
+                <p className="mb-0 small">
+                  <strong>{selectedRestaurant?.name}</strong> has been suspended by Platform Super Admin and is currently not accepting online orders.
+                </p>
               </div>
-              <div className="guest-search">
-                <label className="visually-hidden" htmlFor="guestMenuSearch">
-                  Search the menu
-                </label>
-                <input
-                  className="form-control"
-                  id="guestMenuSearch"
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Search the menu..."
-                  value={searchTerm}
-                />
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isLoading && !error && (
+        <section className="py-4">
+          <div className="container">
+            {/* Search & Category Filter Toolbar */}
+            <div className="row g-3 align-items-center mb-4">
+              <div className="col-12 col-md-8">
+                <div className="d-flex flex-wrap gap-2">
+                  <button
+                    className={`btn btn-sm ${selectedCategory === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => setSelectedCategory('all')}
+                  >
+                    All Items
+                  </button>
+                  {menuCategories.map((cat) => (
+                    <button
+                      className={`btn btn-sm ${selectedCategory === cat.id ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="col-12 col-md-4">
+                <div className="position-relative">
+                  <i className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary" />
+                  <input
+                    className="form-control form-control-sm border-0 bg-light"
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search dishes, cuisines..."
+                    value={searchTerm}
+                    style={{ paddingLeft: '2.4rem' }}
+                  />
+                </div>
               </div>
             </div>
 
             {filteredItems.length ? (
-              <div className="row g-3">
+              <div className="row g-4">
                 {filteredItems.map((item) => (
-                  <div className="col-12 col-md-6 col-xl-4" key={item.id}>
-                    <GuestMenuItemCard categoryName={item.category} item={item} onViewItem={openItemDetail} />
+                  <div className="col-6 col-md-4 col-xl-3" key={item.id}>
+                    <GuestMenuItemCard
+                      categoryName={item.category}
+                      item={{
+                        ...item,
+                        isAvailable: selectedRestaurant?.status === 'Suspended' ? false : item.isAvailable,
+                        is86d: selectedRestaurant?.status === 'Suspended' ? true : item.is86d
+                      }}
+                      onViewItem={selectedRestaurant?.status === 'Suspended' ? undefined : openItemDetail}
+                    />
                   </div>
                 ))}
               </div>
@@ -537,8 +550,8 @@ function GuestHomePage() {
                 </div>
               </>
             )}
-          </section>
-        </div>
+                    </div>
+        </section>
       )}
 
       <GuestItemDetailModal
@@ -547,28 +560,27 @@ function GuestHomePage() {
         onClose={() => setSelectedItem(null)}
       />
 
-      {/* ✅ Added to Cart Toast — pops briefly so user keeps browsing */}
+      {/* ✅ Added to Cart Toast — pops briefly, doesn't block interaction */}
       {addedToastItem && (
         <div
           style={{
             position: 'fixed', top: '80px', left: '50%',
             transform: 'translateX(-50%)', zIndex: 9999,
-            minWidth: '300px', maxWidth: '92vw'
+            minWidth: '260px', maxWidth: '88vw',
+            pointerEvents: 'auto',
+            animation: 'fadeInDown 0.3s ease'
           }}
         >
-          <div className="alert alert-success shadow-lg d-flex align-items-center gap-3 py-3 px-4 rounded-4 border-0 mb-0">
-            <i className="bi bi-bag-check-fill fs-4 text-success" />
-            <div className="flex-grow-1">
-              <div className="fw-bold text-dark" style={{ fontSize: '0.9rem' }}>Added to cart!</div>
-              <div className="text-muted small">{addedToastItem}</div>
-            </div>
+          <div className="alert alert-success shadow-lg d-flex align-items-center gap-2 py-2 px-3 rounded-4 border-0 mb-0" style={{ fontSize: '0.85rem' }}>
+            <i className="bi bi-check-circle-fill text-success" />
+            <span className="fw-semibold flex-grow-1">Added: {addedToastItem}</span>
             <button
               type="button"
-              className="btn btn-sm btn-success fw-bold rounded-pill px-3"
-              onClick={() => { setAddedToastItem(null); openCart(); }}
-            >
-              View Cart ({cartQuantity})
-            </button>
+              className="btn-close btn-close-sm"
+              aria-label="Dismiss"
+              onClick={() => setAddedToastItem(null)}
+              style={{ fontSize: '0.6rem' }}
+            />
           </div>
         </div>
       )}

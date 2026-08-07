@@ -26,6 +26,14 @@ export default function CustomerNotificationBell() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const [copiedCode, setCopiedCode] = useState(null);
+
+  function handleCopyCode(code, e) {
+    if (e) e.stopPropagation();
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  }
 
   // Fetch notifications from API on mount
   useEffect(() => {
@@ -175,6 +183,7 @@ export default function CustomerNotificationBell() {
               ) : (
                 notifications.map((n) => {
                   const { icon, color, bg } = TYPE_ICONS[n.type] || TYPE_ICONS.general;
+                  const discountCode = n.discountCode || n.discount_code;
                   return (
                     <div
                       key={n.id}
@@ -198,7 +207,7 @@ export default function CustomerNotificationBell() {
                       {/* Content */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="d-flex justify-content-between align-items-start mb-1">
-                          <span className="fw-semibold" style={{ fontSize: '0.8rem', color: '#111' }}>
+                          <span className="fw-bold" style={{ fontSize: '0.95rem', color: '#111827' }}>
                             {n.title}
                           </span>
                           {!n.isRead && (
@@ -208,10 +217,29 @@ export default function CustomerNotificationBell() {
                             }} />
                           )}
                         </div>
-                        <p className="mb-1 text-secondary" style={{ fontSize: '0.75rem', lineClamp: 2 }}>
+                        <p className="mb-2 text-dark" style={{ fontSize: '0.85rem', color: '#374151', lineHeight: '1.4' }}>
                           {n.message}
                         </p>
-                        <span style={{ fontSize: '0.7rem', color: '#aaa' }}>
+                        {discountCode && (
+                          <div className="d-flex align-items-center justify-content-between bg-light p-2 rounded border my-2" onClick={(e) => e.stopPropagation()}>
+                            <span className="fw-semibold text-secondary" style={{ fontSize: '0.75rem' }}>Promo Code:</span>
+                            <div className="d-flex align-items-center gap-2">
+                              <code className="fw-bold text-primary px-2 py-1 bg-white border rounded" style={{ fontSize: '0.8rem' }}>
+                                {discountCode}
+                              </code>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary py-0.5 px-2 fw-semibold d-inline-flex align-items-center gap-1"
+                                style={{ fontSize: '0.75rem' }}
+                                onClick={(e) => handleCopyCode(discountCode, e)}
+                              >
+                                <i className={`bi bi-${copiedCode === discountCode ? 'check-lg' : 'clipboard'}`}></i>
+                                {copiedCode === discountCode ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
                           {timeAgo(n.createdAt)}
                         </span>
                       </div>

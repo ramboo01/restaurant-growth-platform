@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext.jsx';
 
 /**
@@ -10,6 +10,7 @@ import { AuthContext } from '../../context/AuthContext.jsx';
 function GuestAuthRoute() {
   const { loading, isAuthenticated } = useContext(AuthContext);
   const location = useLocation();
+  const context = useOutletContext();
 
   if (loading) {
     return (
@@ -26,7 +27,7 @@ function GuestAuthRoute() {
     return <Navigate to="/signin" replace state={{ from: location }} />;
   }
 
-  return <Outlet />;
+  return <Outlet context={context} />;
 }
 
 export default GuestAuthRoute;

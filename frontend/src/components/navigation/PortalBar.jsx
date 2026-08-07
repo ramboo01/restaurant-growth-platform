@@ -22,7 +22,7 @@ function PortalBar() {
   );
 
   return (
-    <div className="bg-dark text-white py-1 px-2 px-sm-3 border-bottom border-secondary border-opacity-25" style={{ fontSize: '0.8rem', zIndex: 1060, maxWidth: '100vw' }}>
+    <div className="bg-dark text-white py-1 px-2 px-sm-3 border-bottom border-secondary border-opacity-25 portal-bar-wrapper position-relative" style={{ fontSize: '0.8rem', zIndex: 1050, maxWidth: '100%' }}>
       <div className="container-fluid d-flex align-items-center justify-content-between gap-2 px-1">
         <div className="d-flex align-items-center gap-1 overflow-x-auto py-1 mw-100" style={{ scrollbarWidth: 'none' }}>
           <span className="text-secondary me-2 fw-semibold d-none d-md-inline" style={{ fontSize: '0.75rem' }}>

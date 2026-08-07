@@ -36,17 +36,20 @@ function OwnerHeader() {
     fetchNotifications();
   }, []);
 
+  const [restaurantStatus, setRestaurantStatus] = useState('Active');
+
   useEffect(() => {
-    if (!user?.restaurantId) return;
-    api.get(`/api/restaurants/${user.restaurantId}`)
+    if (!activeRestaurantId) return;
+    api.get(`/api/restaurants/${activeRestaurantId}`)
       .then((res) => {
-        const name = res.data?.data?.restaurant?.name || res.data?.data?.name || res.data?.name || null;
-        if (name) setRestaurantName(name);
+        const rest = res.data?.data?.restaurant || res.data?.data || res.data || {};
+        if (rest.name) setRestaurantName(rest.name);
+        if (rest.status) setRestaurantStatus(rest.status);
       })
       .catch(() => {
         // fallback to default name silently
       });
-  }, [user?.restaurantId]);
+  }, [activeRestaurantId]);
 
   // Live GPS location detection
   useEffect(() => {
@@ -149,6 +152,11 @@ function OwnerHeader() {
               aria-expanded="false"
             >
               {restaurantName}
+              {restaurantStatus === 'Suspended' && (
+                <span className="badge bg-danger text-white ms-2" style={{ fontSize: '0.7rem' }}>
+                  <i className="bi bi-slash-circle me-1"></i>SUSPENDED BY ADMIN
+                </span>
+              )}
             </button>
             <ul className="dropdown-menu shadow border-0 mt-1" style={{ minWidth: '300px' }}>
               {restaurants.length > 1 && (
@@ -205,62 +213,10 @@ function OwnerHeader() {
       </div>
 
       <div className="d-flex align-items-center gap-2">
-        <button aria-label="Search" className="btn btn-light owner-icon-button d-none d-sm-inline-flex" type="button">
-          <i className="bi bi-search" aria-hidden="true" />
-        </button>
         <div className="dropdown d-inline-block">
-          <button 
-            aria-label={`${unreadCount} notifications`} 
-            className="btn btn-light owner-icon-button position-relative" 
-            type="button"
-            data-bs-toggle="dropdown"
-          >
-            <i className="bi bi-bell" aria-hidden="true" />
-            {unreadCount > 0 && (
-              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-          <div className="dropdown-menu dropdown-menu-end shadow p-0" style={{ width: '320px', zIndex: 1050 }}>
-            <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
-              <h6 className="mb-0">Notifications</h6>
-            </div>
-            <div className="list-group list-group-flush" style={{ maxHeight: '350px', overflowY: 'auto' }}>
-              {isLoading ? (
-                <div className="text-center p-4">
-                  <div className="spinner-border spinner-border-sm text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
-              ) : error ? (
-                <div className="text-center text-danger p-4 small">{error}</div>
-              ) : notifications.length ? (
-                notifications.map((notif) => (
-                  <div key={notif.id || notif._id} className={`list-group-item p-3 ${notif.isRead ? 'bg-light text-muted' : ''}`}>
-                    <div className="d-flex justify-content-between align-items-start mb-1">
-                      <strong className="small">{notif.title}</strong>
-                      {!notif.isRead && (
-                        <button className="btn btn-link btn-sm p-0 text-decoration-none small" onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id || notif._id); }}>
-                          Mark read
-                        </button>
-                      )}
-                    </div>
-                    <div className="small mb-1">{notif.message}</div>
-                    <div className="small text-secondary">{notif.time || notif.createdAt}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-muted p-4 small">No notifications found.</div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="dropdown d-inline-block">
-          <button 
-            aria-label={`${user?.name || 'User'} account menu`} 
-            className="btn owner-avatar-button dropdown-toggle-split" 
+          <button
+            aria-label={`${user?.name || 'User'} account menu`}
+            className="btn owner-avatar-button dropdown-toggle-split"
             type="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"

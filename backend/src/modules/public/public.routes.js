@@ -172,6 +172,13 @@ router.get('/loyalty/check', async (req, res, next) => {
          LIMIT 1`,
         [restaurantId, trimmedPhone]
       );
+    } else if (customerName && customerName.trim() && rows[0].customerName === 'Valued Guest') {
+      // Update from generic name to real name
+      await pool.execute(
+        `UPDATE loyalty_members SET customer_name = ? WHERE id = ?`,
+        [customerName.trim(), rows[0].id]
+      );
+      rows[0].customerName = customerName.trim();
     }
 
     return sendSuccess(res, {

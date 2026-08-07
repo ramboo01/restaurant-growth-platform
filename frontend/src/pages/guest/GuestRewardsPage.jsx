@@ -1,30 +1,35 @@
 import { useState, useEffect, useContext, useCallback } from 'react';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { loyaltyService } from '../../services/loyaltyService.js';
+import { Link } from 'react-router-dom';
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 function getTierConfig(tier) {
   const t = (tier || '').toLowerCase();
-  if (t.includes('gold')) return { label: 'Gold VIP', badge: 'bg-warning text-dark', next: null, max: 1000 };
-  if (t.includes('silver')) return { label: 'Silver', badge: 'bg-secondary', next: 'Gold VIP', max: 1000 };
-  return { label: 'Bronze', badge: 'bg-primary', next: 'Silver', max: 500 };
+  if (t.includes('plat')) return { label: 'Platinum', badge: 'bg-dark text-white', next: null, max: 2000, icon: 'bi-gem' };
+  if (t.includes('gold')) return { label: 'Gold VIP', badge: 'bg-warning text-dark', next: 'Platinum', max: 2000, icon: 'bi-trophy-fill' };
+  if (t.includes('silver')) return { label: 'Silver', badge: 'bg-secondary', next: 'Gold VIP', max: 1000, icon: 'bi-award-fill' };
+  return { label: 'Bronze', badge: 'bg-primary', next: 'Silver', max: 500, icon: 'bi-star-fill' };
 }
 
 function getRewardIcon(name) {
   const n = (name || '').toLowerCase();
-  if (n.includes('drink') || n.includes('beverage')) return 'bi-cup-straw';
-  if (n.includes('dessert') || n.includes('sweet')) return 'bi-cake';
-  if (n.includes('burger') || n.includes('sandwich')) return 'bi-emoji-smile';
-  if (n.includes('fries') || n.includes('appetizer') || n.includes('starter')) return 'bi-egg-fried';
-  if (n.includes('pizza')) return 'bi-pie-chart';
-  if (n.includes('off') || n.includes('discount')) return 'bi-percent';
-  return 'bi-gift';
+  if (n.includes('5') && n.includes('dollar')) return 'bi-tag-fill';
+  if (n.includes('10') && n.includes('dollar')) return 'bi-tags-fill';
+  if (n.includes('15') && n.includes('dollar')) return 'bi-cash-stack';
+  if (n.includes('25') && n.includes('dollar')) return 'bi-cash-coin';
+  if (n.includes('off') || n.includes('discount') || n.includes('%')) return 'bi-percent';
+  return 'bi-gift-fill';
 }
 
 function maskPhone(ph) {
   const s = String(ph).replace(/\D/g, '');
   if (s.length >= 10) return `(${s.slice(0,3)}) ${s.slice(3,6)}-${s.slice(6,10)}`;
   return ph;
+}
+
+function formatCurrency(val) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(val) || 0);
 }
 
 /* ─── Component ──────────────────────────────────────────────────────────── */
@@ -46,6 +51,7 @@ function GuestRewardsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ text: '', type: 'success' });
   const [error, setError] = useState(null);
+  const [redeemingId, setRedeemingId] = useState(null);
 
   const tierConfig = getTierConfig(loyaltyMember?.tier);
 
@@ -104,35 +110,44 @@ function GuestRewardsPage() {
     setPhone(clean);
   };
 
-  // ─── Redeem ───────────────────────────────────────────────────────────────
+  // ─── Redeem — deducts points, saves discount to localStorage for checkout ──
   const handleRedeem = async (reward) => {
     const cost = reward.pointsRequired || reward.points_required || 0;
+    const discountAmt = Number(reward.discountAmount) || Math.max(1, Math.round(cost * 0.10 * 100) / 100);
+
     if (points < cost) {
       setToast({ text: `You need ${cost - points} more points to redeem "${reward.name}".`, type: 'warning' });
       setTimeout(() => setToast({ text: '', type: 'success' }), 4000);
       return;
     }
+
     try {
+      setRedeemingId(reward.id);
       const result = await loyaltyService.redeemPoints(phone, restaurantId, cost);
       if (result) {
         setPoints(result.points);
         setLoyaltyMember((prev) => ({ ...prev, points: result.points, tier: result.tier }));
         const code = 'LOYAL-' + Math.floor(100000 + Math.random() * 900000);
-        
-        // Save both the code AND the discount details so checkout doesn't need to validate it against the campaigns DB
+
+        // Save discount details so checkout auto-applies it
         localStorage.setItem('activePromoCode', code);
         localStorage.setItem('activeLoyaltyReward', JSON.stringify({
           code,
           name: reward.name,
-          discountAmount: reward.discountAmount || (cost * 0.10) // fallback to 10% of points if not defined
+          discountAmount: discountAmt
         }));
 
-        setToast({ text: `✅ "${reward.name}" redeemed! Discount automatically applied to your next order.`, type: 'success' });
-        setTimeout(() => setToast({ text: '', type: 'success' }), 6000);
+        setToast({
+          text: `✅ "${reward.name}" redeemed! ${formatCurrency(discountAmt)} discount will be automatically applied to your next order.`,
+          type: 'success'
+        });
+        setTimeout(() => setToast({ text: '', type: 'success' }), 8000);
       }
     } catch (err) {
       setToast({ text: err.response?.data?.message || 'Failed to redeem. Please try again.', type: 'danger' });
       setTimeout(() => setToast({ text: '', type: 'success' }), 4000);
+    } finally {
+      setRedeemingId(null);
     }
   };
 
@@ -145,6 +160,14 @@ function GuestRewardsPage() {
     localStorage.removeItem('loyaltyPhone');
   };
 
+  // Check if a loyalty reward is already active
+  const activeReward = (() => {
+    try {
+      const saved = localStorage.getItem('activeLoyaltyReward');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  })();
+
   /* ─── Render ─────────────────────────────────────────────────────────────── */
   return (
     <div className="container py-5" style={{ maxWidth: '900px' }}>
@@ -153,13 +176,27 @@ function GuestRewardsPage() {
         <h1 className="fw-bold display-6">
           <i className="bi bi-stars text-warning me-2"></i> RestruRent Loyalty Club
         </h1>
-        <p className="text-muted">Earn 10 points for every $1 spent. Redeem points for delicious rewards.</p>
+        <p className="text-muted">Earn 10 points for every $1 spent. Redeem points for instant discounts on your order.</p>
       </div>
 
       {/* Toast */}
       {toast.text && (
         <div className={`alert alert-${toast.type} text-center shadow-sm mb-4 rounded-3`} role="alert">
           {toast.text}
+        </div>
+      )}
+
+      {/* Active Reward Banner */}
+      {activeReward && (
+        <div className="alert alert-success border-0 shadow-sm d-flex align-items-center gap-3 mb-4 rounded-3">
+          <i className="bi bi-check-circle-fill text-success fs-4"></i>
+          <div className="flex-grow-1">
+            <strong>{activeReward.name}</strong> — {formatCurrency(activeReward.discountAmount)} discount ready!
+            <div className="small text-muted">This will be automatically applied at checkout.</div>
+          </div>
+          <Link to="/" className="btn btn-success btn-sm fw-bold rounded-pill px-3">
+            <i className="bi bi-bag-check me-1"></i>Order Now
+          </Link>
         </div>
       )}
 
@@ -222,7 +259,9 @@ function GuestRewardsPage() {
               <div className="col-12 col-md-6">
                 <div className="d-flex align-items-center gap-2 mb-2">
                   <span className="text-secondary text-uppercase small fw-bold">Your Balance</span>
-                  <span className={`badge ${tierConfig.badge} text-uppercase small px-2`}>{tierConfig.label}</span>
+                  <span className={`badge ${tierConfig.badge} text-uppercase small px-2`}>
+                    <i className={`bi ${tierConfig.icon} me-1`}></i>{tierConfig.label}
+                  </span>
                 </div>
                 <div className="d-flex align-items-baseline gap-2 mb-2">
                   <span className="fw-bold text-warning" style={{ fontSize: '3.5rem', lineHeight: 1 }}>{points}</span>
@@ -260,16 +299,38 @@ function GuestRewardsPage() {
                   </>
                 ) : (
                   <div className="text-warning fw-bold">
-                    <i className="bi bi-trophy-fill me-2"></i> You are at the highest tier — Gold VIP!
+                    <i className="bi bi-trophy-fill me-2"></i> You are at the highest tier — {tierConfig.label}!
                   </div>
                 )}
               </div>
             </div>
           </div>
 
+          {/* How It Works */}
+          <div className="card border-0 shadow-sm rounded-4 mb-5 p-4 bg-light">
+            <h5 className="fw-bold mb-3"><i className="bi bi-info-circle text-primary me-2"></i>How Rewards Work</h5>
+            <div className="row g-3">
+              <div className="col-12 col-md-4 text-center">
+                <div className="fs-2 text-primary mb-2"><i className="bi bi-bag-check"></i></div>
+                <div className="fw-bold small">1. Place Orders</div>
+                <div className="text-muted small">Earn 10 points for every $1 you spend</div>
+              </div>
+              <div className="col-12 col-md-4 text-center">
+                <div className="fs-2 text-warning mb-2"><i className="bi bi-gift"></i></div>
+                <div className="fw-bold small">2. Redeem Rewards</div>
+                <div className="text-muted small">Use your points to unlock discounts below</div>
+              </div>
+              <div className="col-12 col-md-4 text-center">
+                <div className="fs-2 text-success mb-2"><i className="bi bi-cash-stack"></i></div>
+                <div className="fw-bold small">3. Save Money</div>
+                <div className="text-muted small">Discount is applied automatically at checkout</div>
+              </div>
+            </div>
+          </div>
+
           {/* Rewards Catalog */}
           <h4 className="fw-bold mb-4">
-            <i className="bi bi-gift me-2 text-warning"></i>Available Rewards Catalog
+            <i className="bi bi-gift me-2 text-warning"></i>Available Discount Rewards
           </h4>
           {catalog.length === 0 ? (
             <div className="alert alert-light text-center py-4 rounded-4">
@@ -279,20 +340,30 @@ function GuestRewardsPage() {
             <div className="row g-4">
               {catalog.map((reward) => {
                 const cost = reward.pointsRequired || reward.points_required || reward.cost || 0;
+                const discountAmt = Number(reward.discountAmount) || Math.max(1, Math.round(cost * 0.10 * 100) / 100);
                 const canRedeem = points >= cost;
+                const isRedeeming = redeemingId === reward.id;
                 return (
                   <div key={reward.id} className="col-12 col-md-6 col-lg-3">
                     <div className={`card border-0 shadow-sm rounded-4 h-100 text-center p-3 ${!canRedeem ? 'opacity-75' : ''}`}
                          style={{ transition: 'transform 0.2s', cursor: canRedeem ? 'pointer' : 'default' }}>
-                      <div className={`fs-1 mb-3 ${canRedeem ? 'text-primary' : 'text-muted'}`}>
+                      <div className={`fs-1 mb-2 ${canRedeem ? 'text-primary' : 'text-muted'}`}>
                         <i className={`bi ${getRewardIcon(reward.name)}`}></i>
                       </div>
                       <h6 className="fw-bold text-dark mb-1">{reward.name}</h6>
                       {reward.description && (
                         <p className="text-secondary small mb-2">{reward.description}</p>
                       )}
+                      {/* Discount Amount */}
+                      <div className="mb-2">
+                        <span className={`badge ${canRedeem ? 'bg-success' : 'bg-secondary'} bg-opacity-15 px-3 py-2 rounded-pill fs-6`}
+                              style={{ color: canRedeem ? '#198754' : '#6c757d' }}>
+                          {formatCurrency(discountAmt)} OFF
+                        </span>
+                      </div>
+                      {/* Points Cost */}
                       <div className="mb-3">
-                        <span className={`badge ${canRedeem ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'} px-3 py-1 rounded-pill`}>
+                        <span className="text-muted small">
                           <i className="bi bi-stars me-1"></i>{cost} pts required
                         </span>
                       </div>
@@ -303,10 +374,16 @@ function GuestRewardsPage() {
                       )}
                       <button
                         className={`btn ${canRedeem ? 'btn-warning fw-bold' : 'btn-outline-secondary'} w-100 mt-auto rounded-3`}
-                        disabled={!canRedeem}
+                        disabled={!canRedeem || isRedeeming}
                         onClick={() => handleRedeem(reward)}
                       >
-                        {canRedeem ? '🎁 Redeem Now' : 'Locked'}
+                        {isRedeeming ? (
+                          <><span className="spinner-border spinner-border-sm me-1"></span>Redeeming...</>
+                        ) : canRedeem ? (
+                          <><i className="bi bi-check-circle me-1"></i>Redeem {formatCurrency(discountAmt)} OFF</>
+                        ) : (
+                          'Locked'
+                        )}
                       </button>
                     </div>
                   </div>

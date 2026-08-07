@@ -51,6 +51,36 @@ async function getOpenShifts(req, res, next) {
   try {
     const pool = getDatabasePool();
     const restaurantId = req.user?.restaurantId || 1;
+
+    // Check if shifts exist. If not, auto-seed some open shifts in the future!
+    const [countCheck] = await pool.execute(
+      `SELECT COUNT(*) as count FROM staff_shifts WHERE restaurant_id = ?`,
+      [restaurantId]
+    );
+
+    if (countCheck[0]?.count === 0) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dayAfter = new Date();
+      dayAfter.setDate(dayAfter.getDate() + 2);
+      const nextDay = new Date();
+      nextDay.setDate(nextDay.getDate() + 3);
+
+      const initialShifts = [
+        { role: 'Line Cook', date: tomorrow.toISOString().split('T')[0], startTime: '16:00:00', endTime: '22:30:00' },
+        { role: 'Cashier / FOH', date: dayAfter.toISOString().split('T')[0], startTime: '10:00:00', endTime: '16:00:00' },
+        { role: 'Prep Cook', date: nextDay.toISOString().split('T')[0], startTime: '08:00:00', endTime: '14:30:00' }
+      ];
+
+      for (const s of initialShifts) {
+        await pool.execute(
+          `INSERT INTO staff_shifts (restaurant_id, staff_name, role, shift_date, start_time, end_time, is_open_shift, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [restaurantId, 'Open Shift', s.role, s.date, s.startTime, s.endTime, true, 'Open']
+        );
+      }
+    }
+
     const [rows] = await pool.execute(
       `SELECT * FROM staff_shifts WHERE restaurant_id = ? AND (is_open_shift = TRUE OR status = 'Open') ORDER BY shift_date ASC`,
       [restaurantId]

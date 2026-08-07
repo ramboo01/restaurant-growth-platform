@@ -19,8 +19,7 @@ export const ownerNavigationGroups = [
       { label: 'Guests', to: '/owner/guests', icon: 'bi-people' },
       { label: 'Menu', to: '/owner/menu', icon: 'bi-card-list' },
       { label: '86 Board', to: '/owner/86-board', icon: 'bi-toggle-off' },
-      { label: 'Site Editor (CMS)', to: '/owner/site-editor', icon: 'bi-palette' },
-      { label: 'Site / App', to: '/owner/site-app', icon: 'bi-window-sidebar' }
+      { label: 'Site Editor (CMS)', to: '/owner/site-editor', icon: 'bi-palette' }
     ]
   },
   {
@@ -37,6 +36,7 @@ export const ownerNavigationGroups = [
     items: [
       { label: 'Delivery', to: '/owner/delivery', icon: 'bi-truck' },
       { label: 'Orders', to: '/owner/orders', icon: 'bi-receipt' },
+      { label: 'Catering', to: '/owner/catering', icon: 'bi-briefcase' },
       { label: 'Staff & Scheduling', to: '/owner/staff', icon: 'bi-calendar2-week' },
       { label: 'Inventory', to: '/owner/inventory', icon: 'bi-box-seam' },
       { label: 'AI Operations', to: '/owner/ai-operations', icon: 'bi-cpu' }
@@ -46,8 +46,6 @@ export const ownerNavigationGroups = [
     label: 'Business',
     items: [
       { label: 'Franchise', to: '/owner/franchise', icon: 'bi-diagram-3' },
-      { label: 'Franchise Compliance', to: '/owner/franchise-compliance', icon: 'bi-shield-check' },
-      { label: 'Franchise Comparison', to: '/owner/franchise-comparison', icon: 'bi-bar-chart-line' },
       { label: 'Reports', to: '/owner/reports', icon: 'bi-bar-chart' },
       { label: 'Financial Products', to: '/owner/financial-products', icon: 'bi-credit-card' },
       { label: 'Data Export Tool', to: '/owner/data-export', icon: 'bi-file-earmark-arrow-down' }
@@ -55,7 +53,10 @@ export const ownerNavigationGroups = [
   },
   {
     label: 'System',
-    items: [{ label: 'Settings', to: '/owner/settings', icon: 'bi-gear' }]
+    items: [
+      { label: 'Help & Support', to: '/owner/support', icon: 'bi-headset' },
+      { label: 'Settings', to: '/owner/settings', icon: 'bi-gear' }
+    ]
   }
 ];
 

@@ -1,46 +1,59 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
+import api from '../../services/api';
+import { AuthContext } from '../../context/AuthContext';
 
 export default function StaffPerformancePayoutPage() {
+  const { user } = useContext(AuthContext);
   const [searchPhone, setSearchPhone] = useState('');
   const [searchedGuest, setSearchedGuest] = useState(null);
+  const [loadingGuest, setLoadingGuest] = useState(false);
   const [tipsEarned, setTipsEarned] = useState(65.50);
   const [basePay, setBasePay] = useState(110.00);
   const [payoutMessage, setPayoutMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const mockGuests = {
-    '555-0199': {
-      name: 'John Doe',
-      phone: '+1-555-0199',
-      vipTier: 'Gold VIP (1,450 pts)',
-      allergies: 'Gluten Free, Nut Allergy',
-      dietary: 'Vegetarian Options Preferred',
-      recentOrder: 'Truffle Mushroom Burger (No Bun), Iced Matcha Latte',
-      notes: 'Prefers table near window. High spender on weekend dinners.'
-    },
-    '555-0188': {
-      name: 'Sarah Smith',
-      phone: '+1-555-0188',
-      vipTier: 'Platinum Elite (3,800 pts)',
-      allergies: 'Dairy Sensitive',
-      dietary: 'Vegan / Plant-Based',
-      recentOrder: 'Avocado Superfood Salad, Fresh Cold-Pressed Juice',
-      notes: 'Always orders extra dressing on the side. Regular lunch guest.'
-    }
-  };
-
-  const handleSearchGuest = (e) => {
+  const handleSearchGuest = async (e) => {
     e.preventDefault();
-    const found = mockGuests[searchPhone.trim()] || {
-      name: `Guest (${searchPhone || 'Unknown'})`,
-      phone: searchPhone || 'N/A',
-      vipTier: 'Silver Member (250 pts)',
-      allergies: 'None Listed',
-      dietary: 'No Special Restrictions',
-      recentOrder: 'Classic Cheeseburger & Fries',
-      notes: 'First time visiting or standard guest profile.'
-    };
-    setSearchedGuest(found);
+    if (!searchPhone.trim()) return;
+    
+    try {
+      setLoadingGuest(true);
+      const res = await api.get(`/api/customers?search=${encodeURIComponent(searchPhone.trim())}`);
+      const list = res.data?.data?.items || res.data?.items || res.data?.data || [];
+      
+      if (list.length > 0) {
+        const c = list[0];
+        const hasAllergy = c.notes && (
+          c.notes.toLowerCase().includes('allergy') || 
+          c.notes.toLowerCase().includes('intolerance') || 
+          c.notes.toLowerCase().includes('free')
+        );
+        
+        setSearchedGuest({
+          name: c.name,
+          phone: c.phone,
+          vipTier: `${c.loyaltyTier || 'Bronze'} Tier (${c.loyaltyPoints || 0} pts)`,
+          allergies: hasAllergy ? c.notes : 'None Listed',
+          dietary: c.notes || 'No Special Restrictions',
+          recentOrder: c.totalOrders > 0 ? `Total Orders: ${c.totalOrders} | Spent: $${Number(c.totalSpent || 0).toFixed(2)}` : 'No orders recorded',
+          notes: c.notes || 'No host notes.'
+        });
+      } else {
+        setSearchedGuest({
+          name: `Guest (${searchPhone})`,
+          phone: searchPhone,
+          vipTier: 'Non-Member',
+          allergies: 'None Listed',
+          dietary: 'No Special Restrictions',
+          recentOrder: 'No orders recorded',
+          notes: 'No guest profile matches this search query.'
+        });
+      }
+    } catch (err) {
+      console.error('Guest lookup failed:', err);
+    } finally {
+      setLoadingGuest(false);
+    }
   };
 
   const handleRequestInstantPayout = async () => {
@@ -48,13 +61,17 @@ export default function StaffPerformancePayoutPage() {
       setIsProcessing(true);
       setPayoutMessage('');
       
-      // Simulate API call to payout provider (e.g. Stripe Instant Payout)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const res = await api.post('/api/staff/instant-payout/request', {
+        staffName: user?.name || user?.email || 'Logged-in Staff Member',
+        tipsEarned,
+        basePay
+      });
       
-      setPayoutMessage('🎉 Instant payout requested successfully! Funds will arrive shortly.');
+      setPayoutMessage(res.data?.message || '🎉 Instant payout requested successfully! Funds will arrive shortly.');
       setTipsEarned(0);
       setBasePay(0);
     } catch (err) {
+      console.error('Instant payout failed:', err);
       setPayoutMessage('❌ Failed to request instant payout.');
     } finally {
       setIsProcessing(false);
@@ -90,12 +107,16 @@ export default function StaffPerformancePayoutPage() {
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter guest phone (e.g. 555-0199)..."
+                  placeholder="Enter guest phone or name..."
                   value={searchPhone}
                   onChange={(e) => setSearchPhone(e.target.value)}
                 />
-                <button type="submit" className="btn btn-primary fw-bold">
-                  <i className="bi bi-search me-1" /> Search Card
+                <button type="submit" className="btn btn-primary fw-bold" disabled={loadingGuest}>
+                  {loadingGuest ? 'Searching...' : (
+                    <>
+                      <i className="bi bi-search me-1" /> Search Card
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -116,7 +137,7 @@ export default function StaffPerformancePayoutPage() {
                   <strong className="text-success">🥗 Dietary Preferences:</strong> {searchedGuest.dietary}
                 </div>
                 <div className="small mb-2">
-                  <strong>🍔 Last Order:</strong> {searchedGuest.recentOrder}
+                  <strong>🍔 Order Summary:</strong> {searchedGuest.recentOrder}
                 </div>
                 <div className="small text-muted border-top pt-2 mt-2">
                   <strong>💡 Hostess Notes:</strong> {searchedGuest.notes}
@@ -124,7 +145,7 @@ export default function StaffPerformancePayoutPage() {
               </div>
             ) : (
               <div className="text-center py-4 text-muted small">
-                Search guest phone number to view allergen badges & dietary preferences.
+                Search guest phone number or name to view allergen badges & dietary preferences.
               </div>
             )}
           </div>
@@ -181,12 +202,17 @@ export default function StaffPerformancePayoutPage() {
               type="button"
               className="btn btn-success btn-lg w-100 fw-bold shadow-sm"
               onClick={handleRequestInstantPayout}
-              disabled={isProcessing}
+              disabled={isProcessing || (basePay + tipsEarned === 0)}
+              style={{ minHeight: '54px' }}
             >
               {isProcessing ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" role="status" />
                   Processing Cash Out...
+                </>
+              ) : (basePay + tipsEarned === 0) ? (
+                <>
+                  <i className="bi bi-check-circle-fill me-2" /> Payout Disbursed
                 </>
               ) : (
                 <>

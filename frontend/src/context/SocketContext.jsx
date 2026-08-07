@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
+import { useRestaurant } from './RestaurantContext';
 
 export const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
   const { user, isAuthenticated } = useContext(AuthContext);
+  const { activeRestaurantId } = useRestaurant();
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -16,7 +18,7 @@ export function SocketProvider({ children }) {
       transports: ['websocket', 'polling']
     });
 
-    const targetRestaurantId = user?.restaurantId || 1;
+    const targetRestaurantId = activeRestaurantId || user?.restaurantId || 1;
 
     newSocket.on('connect', () => {
       console.log('[Socket] Connected to server:', newSocket.id);
@@ -35,7 +37,7 @@ export function SocketProvider({ children }) {
       newSocket.emit('leaveRestaurantRoom', targetRestaurantId);
       newSocket.disconnect();
     };
-  }, [user?.restaurantId]); // Re-run if auth state or restaurantId changes
+  }, [user?.restaurantId, activeRestaurantId]); // Re-run if auth state or restaurantId / activeRestaurantId changes
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

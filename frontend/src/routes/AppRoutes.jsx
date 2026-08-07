@@ -9,7 +9,6 @@ import RegisterPage from '../pages/auth/RegisterPage.jsx';
 import AdminHomePage from '../pages/admin/AdminHomePage.jsx';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage.jsx';
 import AdminChannelSyncPage from '../pages/admin/AdminChannelSyncPage.jsx';
-import AdminOnboardingPage from '../pages/admin/AdminOnboardingPage.jsx';
 import AdminSupportTicketsPage from '../pages/admin/AdminSupportTicketsPage.jsx';
 import AdminAuditLogPage from '../pages/admin/AdminAuditLogPage.jsx';
 import AdminRestaurantsPage from '../pages/admin/AdminRestaurantsPage.jsx';
@@ -17,6 +16,8 @@ import AdminUsersPage from '../pages/admin/AdminUsersPage.jsx';
 import AdminReportsPage from '../pages/admin/AdminReportsPage.jsx';
 import AdminSecurityPage from '../pages/admin/AdminSecurityPage.jsx';
 import AdminMonitoringPage from '../pages/admin/AdminMonitoringPage.jsx';
+import AdminLoginPage from '../pages/admin/AdminLoginPage.jsx';
+import AdminRoute from '../components/auth/AdminRoute.jsx';
 
 import DriverHomePage from '../pages/driver/DriverHomePage.jsx';
 import DriverOrdersPage from '../pages/driver/DriverOrdersPage.jsx';
@@ -33,6 +34,7 @@ import GuestRewardsPage from '../pages/guest/GuestRewardsPage.jsx';
 import GuestCateringPage from '../pages/guest/GuestCateringPage.jsx';
 import Owner86BoardPage from '../pages/owner/Owner86BoardPage.jsx';
 import OwnerHomePage from '../pages/owner/OwnerHomePage.jsx';
+import OwnerSupportTicketsPage from '../pages/owner/OwnerSupportTicketsPage.jsx';
 import OwnerMenuItemEditorPage from '../pages/owner/OwnerMenuItemEditorPage.jsx';
 import OwnerOrdersPage from '../pages/owner/OwnerOrdersPage.jsx';
 import OwnerMenuPage from '../pages/owner/OwnerMenuPage.jsx';
@@ -63,11 +65,13 @@ import SiteAppPage from '../pages/owner/SiteAppPage.jsx';
 import DeliveryConfigPage from '../pages/owner/DeliveryConfigPage.jsx';
 import AiOperationsPage from '../pages/owner/AiOperationsPage.jsx';
 import FinancialProductsPage from '../pages/owner/FinancialProductsPage.jsx';
+import OwnerCateringPage from '../pages/owner/OwnerCateringPage.jsx';
 
 import SiteContentEditorPage from '../pages/owner/SiteContentEditorPage.jsx';
 import GuestPreferencesPage from '../pages/guest/GuestPreferencesPage.jsx';
 import DataExportPage from '../pages/owner/DataExportPage.jsx';
 import StaffAvailabilityPage from '../pages/staff/StaffAvailabilityPage.jsx';
+import StaffCateringPage from '../pages/staff/StaffCateringPage.jsx';
 import FranchiseCompliancePage from '../pages/owner/FranchiseCompliancePage.jsx';
 import AdminPrivacyConsolePage from '../pages/admin/AdminPrivacyConsolePage.jsx';
 import AdminFinancialCompliancePage from '../pages/admin/AdminFinancialCompliancePage.jsx';
@@ -89,13 +93,13 @@ function AppRoutes() {
           <Route path="register" element={<RegisterPage />} />
           <Route path="orders/:orderId" element={<GuestOrderTrackingPage />} />
           <Route path="order-success" element={<GuestOrderSuccessPage />} />
+          <Route path="catering" element={<GuestCateringPage />} />
 
           {/* Protected guest pages — must be signed in */}
           <Route element={<GuestAuthRoute />}>
             <Route path="checkout" element={<GuestCheckoutPage />} />
             <Route path="orders" element={<GuestOrdersPage />} />
             <Route path="rewards" element={<GuestRewardsPage />} />
-            <Route path="catering" element={<GuestCateringPage />} />
             <Route path="preferences" element={<GuestPreferencesPage />} />
           </Route>
         </Route>
@@ -110,7 +114,7 @@ function AppRoutes() {
             <Route path="menu/items/:itemId" element={<OwnerMenuItemEditorPage />} />
             <Route path="orders" element={<OwnerOrdersPage />} />
             <Route path="86-board" element={<Owner86BoardPage />} />
-            <Route path="site-app" element={<SiteAppPage />} />
+            <Route path="site-app" element={<Navigate to="/owner/site-editor" replace />} />
             <Route path="site-editor" element={<SiteContentEditorPage />} />
             <Route path="campaigns" element={<CampaignStudioPage />} />
             <Route path="loyalty" element={<LoyaltyDashboardPage />} />
@@ -127,8 +131,10 @@ function AppRoutes() {
             <Route path="reports" element={<AnalyticsPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="financial-products" element={<FinancialProductsPage />} />
+            <Route path="catering" element={<OwnerCateringPage />} />
             <Route path="data-export" element={<DataExportPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="support" element={<OwnerSupportTicketsPage />} />
             {/* Internal staff registration — only accessible when logged in as Owner/Admin */}
             <Route path="register-staff" element={<RegisterPage />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
@@ -146,6 +152,7 @@ function AppRoutes() {
             <Route path="pos-loyalty" element={<StaffPosLoyaltyPage />} />
             <Route path="availability" element={<StaffAvailabilityPage />} />
             <Route path="performance-payout" element={<StaffPerformancePayoutPage />} />
+            <Route path="catering" element={<StaffCateringPage />} />
             <Route path="*" element={<StaffHomePage />} />
           </Route>
         </Route>
@@ -159,7 +166,11 @@ function AppRoutes() {
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
+        {/* Dedicated Admin Portal Login Route */}
+        <Route path="admin/login" element={<AdminLoginPage />} />
+
+        {/* Protected Admin Console Routes */}
+        <Route element={<AdminRoute />}>
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
@@ -168,9 +179,8 @@ function AppRoutes() {
             <Route path="reports" element={<AdminReportsPage />} />
             <Route path="security" element={<AdminSecurityPage />} />
             <Route path="monitoring" element={<AdminMonitoringPage />} />
-            <Route path="guests" element={<AdminHomePage />} />
+            <Route path="guests" element={<Navigate to="/admin/privacy-console" replace />} />
             <Route path="sync" element={<AdminChannelSyncPage />} />
-            <Route path="onboarding" element={<AdminOnboardingPage />} />
             <Route path="support" element={<AdminSupportTicketsPage />} />
             <Route path="privacy-console" element={<AdminPrivacyConsolePage />} />
             <Route path="financial-compliance" element={<AdminFinancialCompliancePage />} />

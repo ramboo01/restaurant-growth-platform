@@ -17,18 +17,13 @@ function StaffGuestLookupPage() {
       setError('');
       const res = await api.get('/api/customers');
       const data = res.data;
-      // Support both array or { data: [...] } shaped responses
-      const list = Array.isArray(data) ? data : (data?.data || data?.customers || []);
+      
+      // Extract array from paginated response
+      const list = Array.isArray(data) ? data : (data?.data?.items || data?.items || data?.data || data?.customers || []);
       setGuests(list);
     } catch (err) {
       console.error('Failed to fetch guests:', err);
-      // Fallback to static demo data so the page is always useful
-      setGuests([
-        { id: 1, name: 'Sarah Jenkins', phone: '(555) 234-5678', segment: 'VIP', notes: 'Peanuts / Shellfish allergy. 24 total visits.', total_orders: 24, total_spent: 890.50 },
-        { id: 2, name: 'Michael Scott', phone: '(555) 876-5432', segment: 'Regular', notes: 'Gluten-Free dietary preference. Prefers booth seating.', total_orders: 12, total_spent: 340.00 },
-        { id: 3, name: 'Dwight Schrute', phone: '(555) 999-1111', segment: 'VIP', notes: 'Dairy intolerance. High-frequency lunch guest.', total_orders: 48, total_spent: 1820.75 },
-      ]);
-      setError('Live data unavailable — showing demo records.');
+      setError('Live data unavailable.');
     } finally {
       setLoading(false);
     }

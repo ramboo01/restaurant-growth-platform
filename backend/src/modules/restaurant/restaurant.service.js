@@ -32,11 +32,32 @@ async function createRestaurant(payload, userId) {
 
 async function getRestaurants() {
   const [rows] = await getDatabasePool().execute(
-    `SELECT id, name, phone, email, address, cuisine, opening_time AS openingTime, closing_time AS closingTime, created_at AS createdAt
-     FROM restaurants
-     ORDER BY id ASC`
+    `SELECT 
+        r.id, 
+        r.name, 
+        r.phone, 
+        r.email, 
+        r.address, 
+        r.cuisine, 
+        r.opening_time AS openingTime, 
+        r.closing_time AS closingTime, 
+        COALESCE(r.status, 'Active') AS status,
+        r.created_at AS createdAt,
+        (SELECT COUNT(*) FROM orders WHERE restaurant_id = r.id) AS orderCount,
+        (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE restaurant_id = r.id) AS totalRevenue
+     FROM restaurants r
+     ORDER BY r.id ASC`
   );
   return rows;
+}
+
+async function updateRestaurantStatus(id, status) {
+  const pool = getDatabasePool();
+  await pool.execute(
+    `UPDATE restaurants SET status = ? WHERE id = ?`,
+    [status, id]
+  );
+  return getRestaurantById(id);
 }
 
 async function getRestaurantById(id) {
@@ -44,6 +65,7 @@ async function getRestaurantById(id) {
   const [rows] = await pool.execute(
     `SELECT id, name, phone, email, address, cuisine, 
             opening_time AS openingTime, closing_time AS closingTime, created_at AS createdAt,
+            COALESCE(status, 'Active') AS status,
             weekly_schedule AS weeklySchedule, gst, service_charge AS serviceCharge,
             cash, card, upi, wallet, primary_color AS primaryColor, secondary_color AS secondaryColor,
             email_notifications AS emailNotifications, sms_notifications AS smsNotifications, push_notifications AS pushNotifications,
@@ -137,5 +159,6 @@ module.exports = {
   getRestaurants,
   getRestaurantById,
   updateRestaurant,
+  updateRestaurantStatus,
   deleteRestaurant
 };

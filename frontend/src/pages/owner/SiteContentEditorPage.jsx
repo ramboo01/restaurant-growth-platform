@@ -166,6 +166,12 @@ export default function SiteContentEditorPage() {
                   onChange={handleChange}
                   placeholder="https://images.unsplash.com/photo-..."
                 />
+                {formData.hero_image_url && formData.hero_image_url.includes('unsplash.com/photos/') && (
+                  <div className="alert alert-warning p-2 mt-2 mb-0 small" style={{ fontSize: '0.82rem' }}>
+                    <i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                    <strong>Warning:</strong> You pasted an Unsplash webpage URL. For Unsplash images, please <strong>right-click the image</strong> on Unsplash and select <strong>"Copy image address"</strong>, then paste that direct link here (e.g. <code>https://images.unsplash.com/photo-...</code>).
+                  </div>
+                )}
               </div>
 
               {/* Ticker & Store Hours */}
@@ -252,7 +258,9 @@ export default function SiteContentEditorPage() {
             <div
               className="p-5 text-white text-center position-relative"
               style={{
-                background: `linear-gradient(135deg, ${formData.primary_color}, ${formData.secondary_color})`,
+                background: formData.hero_image_url && !formData.hero_image_url.includes('unsplash.com/photos/')
+                  ? `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.65)), url(${formData.hero_image_url}) no-repeat center center / cover, linear-gradient(135deg, ${formData.primary_color}, ${formData.secondary_color})`
+                  : `linear-gradient(135deg, ${formData.primary_color}, ${formData.secondary_color})`,
                 minHeight: 240,
                 display: 'flex',
                 flexDirection: 'column',

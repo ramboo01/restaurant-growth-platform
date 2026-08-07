@@ -1,34 +1,97 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useSocket } from '../../context/SocketContext.jsx';
+import { AuthContext } from '../../context/AuthContext.jsx';
+import { fetchMenuItems, updateMenuItem } from '../../services/menuService.js';
 
 function Staff86BoardPage() {
-  const [items, setItems] = useState([
-    { id: 1, name: 'Crispy Fish Taco', category: 'Tacos', isAvailable: true, price: 4.50 },
-    { id: 2, name: 'Birria Ramen Bowl', category: 'Specials', isAvailable: false, price: 14.99 },
-    { id: 3, name: 'Churro Ice Cream Sandwich', category: 'Desserts', isAvailable: true, price: 6.00 },
-    { id: 4, name: 'Horchata Cold Brew', category: 'Beverages', isAvailable: true, price: 5.25 },
-    { id: 5, name: 'Guacamole & Chips', category: 'Sides', isAvailable: true, price: 7.99 },
-  ]);
-
+  const { user } = useContext(AuthContext);
+  const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const { socket } = useSocket();
 
-  const toggleAvailability = (id) => {
-    setItems(prev => prev.map(item => {
-      if (item.id === id) {
-        const nextState = !item.isAvailable;
-        if (socket) {
-          socket.emit('TOGGLE_ITEM_AVAILABILITY', { itemId: id, isAvailable: nextState });
-        }
-        return { ...item, isAvailable: nextState };
+  const loadData = async () => {
+    try {
+      const fetchedItems = await fetchMenuItems();
+      setItems(
+        (Array.isArray(fetchedItems) ? fetchedItems : []).map((item) => ({
+          ...item,
+          isAvailable: item.isAvailable !== false && item.isAvailable !== 0 && item.isAvailable !== '0',
+          price: Number(item.price || 0)
+        }))
+      );
+    } catch (err) {
+      console.error('Error fetching menu items:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [user?.restaurantId]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleMenuItemUpdated = (updatedItem) => {
+      setItems((currentItems) =>
+        currentItems.map((item) => {
+          if (item.id === updatedItem.id) {
+            return {
+              ...item,
+              ...updatedItem,
+              isAvailable: updatedItem.isAvailable !== false && updatedItem.isAvailable !== 0 && updatedItem.isAvailable !== '0',
+              price: Number(updatedItem.price || item.price || 0)
+            };
+          }
+          return item;
+        })
+      );
+    };
+
+    socket.on('menuItemUpdated', handleMenuItemUpdated);
+    return () => {
+      socket.off('menuItemUpdated', handleMenuItemUpdated);
+    };
+  }, [socket]);
+
+  const toggleAvailability = async (item) => {
+    const willRestore = !item.isAvailable;
+    
+    // Optimistic UI update
+    setItems(prev => prev.map(i => {
+      if (i.id === item.id) {
+        return { ...i, isAvailable: willRestore };
       }
-      return item;
+      return i;
     }));
+
+    try {
+      await updateMenuItem(item.id, {
+        restaurantId: user?.restaurantId || 1,
+        name: item.name,
+        description: item.description || '',
+        category: item.category || 'Unassigned',
+        price: item.price || 0,
+        imageUrl: item.imageUrl || '',
+        isAvailable: Boolean(willRestore)
+      });
+      
+      if (socket) {
+        socket.emit('TOGGLE_ITEM_AVAILABILITY', { itemId: item.id, isAvailable: willRestore });
+      }
+    } catch (err) {
+      console.error('Failed to update item availability:', err);
+      // Revert on error
+      setItems(prev => prev.map(i => {
+        if (i.id === item.id) {
+          return { ...i, isAvailable: !willRestore };
+        }
+        return i;
+      }));
+    }
   };
 
   const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
+    (item.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (item.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -70,11 +133,11 @@ function Staff86BoardPage() {
                 <span className="fw-bold text-dark fs-5">{item.name}</span>
                 <span className="badge bg-light text-dark border">{item.category}</span>
               </div>
-              <div className="text-muted small">${item.price.toFixed(2)}</div>
+              <div className="text-muted small">${Number(item.price).toFixed(2)}</div>
             </div>
 
             <button
-              onClick={() => toggleAvailability(item.id)}
+              onClick={() => toggleAvailability(item)}
               className={`btn btn-lg ${item.isAvailable ? 'btn-outline-danger' : 'btn-success'} fw-bold px-4 rounded-pill`}
             >
               {item.isAvailable ? (
@@ -89,6 +152,12 @@ function Staff86BoardPage() {
             </button>
           </div>
         ))}
+        {filteredItems.length === 0 && (
+          <div className="text-center py-5 text-muted bg-white">
+            <i className="bi bi-search display-6 d-block mb-3"></i>
+            No menu items found matching search filters.
+          </div>
+        )}
       </div>
     </div>
   );

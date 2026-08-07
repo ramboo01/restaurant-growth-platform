@@ -6,6 +6,11 @@ export const franchiseService = {
     return response.data?.data?.restaurants || [];
   },
 
+  getComparisonData: async () => {
+    const response = await api.get('/api/franchise/comparison-data');
+    return response.data?.data || { stores: [], summary: { combinedSales: 0, avgLaborCost: '0%', avgAuditScore: '0%' } };
+  },
+
   updateRestaurantStatus: async (restaurantId, status) => {
     const response = await api.patch(`/api/franchise/${restaurantId}/status`, { status });
     return response.data?.data;

@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { loyaltyService } from '../../services/loyaltyService.js';
 
 const loyaltyRules = [
-  '₹100 = 10 Points',
-  'Birthday Bonus',
-  'Referral Bonus'
+  '$1 spent = 10 Points',
+  'Birthday Bonus (Coming Soon)',
+  'Referral Bonus (Coming Soon)'
 ];
 
 function LoyaltyDashboardPage() {
@@ -18,6 +18,7 @@ function LoyaltyDashboardPage() {
   const [formValues, setFormValues] = useState({
     name: '',
     pointsRequired: '',
+    discountAmount: '',
     description: '',
     status: 'Active'
   });
@@ -67,6 +68,7 @@ function LoyaltyDashboardPage() {
       setFormValues({
         name: '',
         pointsRequired: '',
+        discountAmount: '',
         description: '',
         status: 'Active'
       });
@@ -175,6 +177,7 @@ function LoyaltyDashboardPage() {
                         </div>
                         <div className="text-end">
                           <div className="fw-semibold mb-1">{reward.pointsRequired} points</div>
+                          <div className="text-success small fw-bold mb-1">${Number(reward.discountAmount || 0).toFixed(2)} OFF</div>
                           <span className={`badge ${reward.status === 'Active' ? 'text-bg-success' : 'text-bg-secondary'}`}>
                             {reward.status}
                           </span>
@@ -235,6 +238,23 @@ function LoyaltyDashboardPage() {
                       type="number"
                       value={formValues.pointsRequired}
                     />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label" htmlFor="discountAmount">
+                      Discount Amount ($)
+                    </label>
+                    <input
+                      className="form-control"
+                      id="discountAmount"
+                      name="discountAmount"
+                      onChange={handleChange}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="e.g. 5.00"
+                      value={formValues.discountAmount}
+                    />
+                    <div className="form-text text-muted small">Dollar amount to discount from the order. If left empty, defaults to 10% of points.</div>
                   </div>
                   <div className="mb-3">
                     <label className="form-label" htmlFor="rewardDescription">

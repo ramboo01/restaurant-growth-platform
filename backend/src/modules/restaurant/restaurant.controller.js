@@ -3,6 +3,7 @@ const {
   getRestaurants,
   getRestaurantById,
   updateRestaurant,
+  updateRestaurantStatus,
   deleteRestaurant
 } = require('./restaurant.service');
 const { sendSuccess, sendError } = require('../../utils/apiResponse');
@@ -52,6 +53,19 @@ async function update(request, response, next) {
   }
 }
 
+async function updateStatus(request, response, next) {
+  try {
+    const { status } = request.body;
+    if (!status) {
+      return sendError(response, { statusCode: 400, message: 'Status is required.' });
+    }
+    const restaurant = await updateRestaurantStatus(request.params.id, status);
+    return sendSuccess(response, { statusCode: 200, message: 'Restaurant status updated successfully.', data: { restaurant } });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function remove(request, response, next) {
   try {
     const deleted = await deleteRestaurant(request.params.id);
@@ -70,5 +84,6 @@ module.exports = {
   list,
   getById,
   update,
+  updateStatus,
   remove
 };

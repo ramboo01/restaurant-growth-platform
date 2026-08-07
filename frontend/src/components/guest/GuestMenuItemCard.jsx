@@ -5,52 +5,50 @@ function GuestMenuItemCard({ categoryName, item, onViewItem }) {
   const imgUrl = getImageUrl(item.imageUrl);
 
   return (
-    <article className={`card border-0 guest-menu-card h-100 ${isUnavailable ? 'is-unavailable' : ''}`}>
-      <div className="card-body d-flex flex-column">
-        <div className="d-flex gap-3 mb-3">
-          <div className="guest-item-visual overflow-hidden p-0" aria-hidden="true">
-            {imgUrl ? (
-              <img src={imgUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              item.imagePlaceholder
-            )}
+    <article
+      className={`guest-menu-card ${isUnavailable ? 'is-unavailable' : ''}`}
+      onClick={() => !isUnavailable && onViewItem?.(item)}
+      role="button"
+      tabIndex={isUnavailable ? -1 : 0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !isUnavailable) onViewItem?.(item);
+      }}
+    >
+      {/* Image / Placeholder Section */}
+      <div className="guest-menu-card__image">
+        {imgUrl ? (
+          <img src={imgUrl} alt={item.name} loading="lazy" />
+        ) : (
+          <div className="guest-menu-card__placeholder">
+            <span>{item.imagePlaceholder}</span>
           </div>
-          <div className="flex-grow-1">
-            <div className="d-flex justify-content-between gap-2">
-              <h3 className="h6 mb-1">{item.name}</h3>
-              <span className="fw-semibold">${item.basePrice.toFixed(2)}</span>
-            </div>
-            <p className="text-secondary small mb-0">{categoryName}</p>
+        )}
+        {isUnavailable && (
+          <div className="guest-menu-card__sold-out">
+            <i className="bi bi-slash-circle me-1" />Sold Out
           </div>
-        </div>
-        <p className="text-secondary small mb-3">{item.description}</p>
+        )}
+        {!isUnavailable && (
+          <div className="guest-menu-card__quick-add" aria-label="Quick add to cart">
+            <i className="bi bi-plus-lg" />
+          </div>
+        )}
+      </div>
 
-        <div className="d-flex flex-wrap gap-2 mb-3">
-          {item.allergenTags.length ? (
-            item.allergenTags.map((tag) => (
-              <span className="badge text-bg-light border" key={tag}>
-                {tag}
-              </span>
-            ))
-          ) : (
-            <span className="badge text-bg-light border">No listed allergens</span>
+      {/* Info Section */}
+      <div className="guest-menu-card__body">
+        <div className="guest-menu-card__category">{categoryName}</div>
+        <h3 className="guest-menu-card__name">{item.name}</h3>
+        {item.description && (
+          <p className="guest-menu-card__desc">{item.description}</p>
+        )}
+        <div className="guest-menu-card__footer">
+          <span className="guest-menu-card__price">${item.basePrice.toFixed(2)}</span>
+          {!isUnavailable && (
+            <span className="guest-menu-card__action">
+              View <i className="bi bi-arrow-right" />
+            </span>
           )}
-        </div>
-
-        <div className="mt-auto d-flex flex-column gap-2">
-          {isUnavailable ? (
-            <span className="badge text-bg-secondary align-self-start">Currently unavailable</span>
-          ) : (
-            <span className="badge text-bg-success align-self-start">Available</span>
-          )}
-          <button
-            className="btn btn-primary w-100"
-            disabled={isUnavailable}
-            onClick={() => onViewItem?.(item)}
-            type="button"
-          >
-            View item
-          </button>
         </div>
       </div>
     </article>

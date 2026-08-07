@@ -17,9 +17,9 @@ function AdminRestaurantsPage() {
         id: r.id,
         name: r.name || 'Unnamed Restaurant',
         location: r.address || r.city || 'Primary Location',
-        status: r.status || (r.isActive !== false ? 'Active' : 'Suspended'),
-        orders: r.orderCount || r.total_orders || 142,
-        revenue: Number(r.totalRevenue || r.total_revenue || 4520.00),
+        status: r.status || 'Active',
+        orders: r.orderCount !== undefined ? r.orderCount : (r.orders || 0),
+        revenue: Number(r.totalRevenue !== undefined ? r.totalRevenue : (r.revenue || 0)),
         owner: r.ownerName || r.email || 'Merchant Owner'
       })));
     } catch (err) {
@@ -36,11 +36,11 @@ function AdminRestaurantsPage() {
 
   const updateStatus = async (id, newStatus) => {
     try {
-      await restaurantService.updateRestaurant(id, { status: newStatus, isActive: newStatus === 'Active' });
       setRestaurants(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+      await restaurantService.updateRestaurantStatus(id, newStatus);
     } catch (err) {
-      // Optimistic update fallback
-      setRestaurants(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+      console.error('Failed to update status:', err);
+      loadRestaurants();
     }
   };
 

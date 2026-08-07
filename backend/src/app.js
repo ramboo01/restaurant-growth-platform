@@ -85,14 +85,14 @@ app.use('/api/categories', authorize('Owner', 'Manager'), categoryRoutes);
 app.use('/api/orders', authorize('Owner', 'Manager', 'Staff', 'Driver'), verifyRestaurantOwnership, orderRoutes);
 app.use('/api/staff', authorize('Admin', 'Owner'), verifyRestaurantOwnership, staffRoutes);
 app.use('/api/drivers', authorize('Owner', 'Driver'), verifyRestaurantOwnership, driverRoutes);
-app.use('/api/inventory', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, inventoryRoutes);
+app.use('/api/inventory', authorize('Admin', 'Owner', 'Manager', 'Staff'), verifyRestaurantOwnership, inventoryRoutes);
 app.use('/api/loyalty', authorize('Admin', 'Owner', 'Manager'), loyaltyRoutes);
 app.use('/api/analytics', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, analyticsRoutes);
-app.use('/api/customers', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, customerRoutes);
-app.use('/api/notifications', verifyRestaurantOwnership, notificationRoutes);
+app.use('/api/customers', authorize('Admin', 'Owner', 'Manager', 'Staff'), verifyRestaurantOwnership, customerRoutes);
+app.use('/api/notifications', authorize('Owner', 'Manager', 'Admin', 'Staff', 'Driver'), verifyRestaurantOwnership, notificationRoutes);
 app.use('/api/reports', authorize('Admin', 'Owner'), verifyRestaurantOwnership, reportRoutes);
 app.use('/api/suppliers', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, supplierRoutes);
-app.use('/api/campaigns', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, campaignRoutes);
+app.use('/api/campaigns', campaignRoutes);
 app.use('/api/reviews', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, reviewRoutes);
 app.use('/api/seo', authorize('Admin', 'Owner', 'Manager'), verifyRestaurantOwnership, seoRoutes);
 app.use('/api/delivery', deliveryRoutes);
@@ -110,15 +110,19 @@ app.use('/api/site-settings', siteSettingsRoutes);
 
 // Guest Privacy Preferences (GST-009) & Data Export (OWN-030)
 const guestPrivacyController = require('./modules/customer/guestPrivacy.controller');
-const cateringController = require('./modules/customer/catering.controller');
 app.get('/api/customer/preferences', authorize('Customer', 'Owner', 'Admin'), guestPrivacyController.getGuestPreferences);
 app.put('/api/customer/preferences', authorize('Customer', 'Owner', 'Admin'), guestPrivacyController.updateGuestPreferences);
 app.post('/api/customer/privacy/erasure-request', authorize('Customer', 'Owner', 'Admin'), guestPrivacyController.requestErasure);
 app.get('/api/owner/data-export', authorize('Owner', 'Admin'), guestPrivacyController.exportRestaurantData);
 
-// Catering Installment Bookings (GST-008)
-app.post('/api/customer/catering', cateringController.createCateringBooking);
-app.get('/api/customer/catering', cateringController.getCateringBookings);
+// Catering Module (dedicated system — separate from regular orders)
+const newCateringController = require('./modules/catering/catering.controller');
+app.post('/api/catering/request', newCateringController.submitCateringRequest);
+app.get('/api/catering/my-orders', newCateringController.getMyOrders);
+app.get('/api/catering/restaurant/:restaurantId', authorize('Owner', 'Admin', 'Manager'), newCateringController.getRestaurantOrders);
+app.patch('/api/catering/:id/status', authorize('Owner', 'Admin', 'Manager'), newCateringController.updateOrderStatus);
+app.patch('/api/catering/:id/notes', authorize('Owner', 'Admin', 'Manager'), newCateringController.updateOrderNotes);
+app.get('/api/catering/staff/:restaurantId', authorize('Owner', 'Admin', 'Manager', 'Staff'), newCateringController.getStaffEvents);
 
 // Shifts & Scheduling (OWN-015, OWN-016, ST-006)
 const shiftsController = require('./modules/shifts/shifts.controller');
@@ -134,20 +138,52 @@ app.post('/api/franchise/price-override/action', franchiseComplianceController.h
 
 // Platform Admin Endpoints (ADM-001, ADM-002, ADM-005, ADM-007)
 const adminController = require('./modules/admin/admin.controller');
+const supportController = require('./modules/support/support.controller');
+
+// Support & Tickets API Routes
+app.post('/api/owner/support/tickets', supportController.createOwnerTicket);
+app.get('/api/owner/support/tickets', supportController.getOwnerTickets);
+app.get('/api/admin/support/tickets', supportController.getAdminTickets);
+app.post('/api/admin/support/respond-ticket', supportController.respondAndResolveTicket);
+
+// Onboarding Specialist API Routes
+app.get('/api/admin/onboarding/list', adminController.getOnboardingList);
+app.post('/api/admin/onboarding/update-step', adminController.updateOnboardingStep);
+app.post('/api/admin/onboarding/go-live', adminController.activateStoreGoLive);
+
 app.get('/api/admin/privacy/requests', adminController.getPrivacyRequests);
 app.post('/api/admin/privacy/process-erasure', adminController.processErasureRequest);
 app.post('/api/admin/privacy/merge-profiles', adminController.mergeProfiles);
+app.post('/api/admin/privacy/separate-profiles', adminController.separateProfiles);
 app.get('/api/admin/financial/payouts', adminController.getStorePayouts);
 app.post('/api/admin/financial/release-payout', adminController.releasePayout);
+app.post('/api/admin/financial/recalculate', adminController.recalculateStorePayouts);
 app.get('/api/admin/audit-logs', adminController.getAuditLogs);
+app.post('/api/admin/broadcast', adminController.broadcastAnnouncement);
+app.get('/api/admin/users', adminController.getUsers);
+app.patch('/api/admin/users/:id/role', adminController.updateUserRole);
+app.get('/api/admin/reports/summary', adminController.getPlatformReportsSummary);
+app.get('/api/admin/system/health', adminController.getSystemHealthStatus);
+app.post('/api/admin/system/ping', adminController.pingInfrastructureService);
+app.get('/api/admin/security/settings', adminController.getSecuritySettings);
+app.post('/api/admin/security/2fa-toggle', adminController.toggle2FAEnforcement);
+app.post('/api/admin/security/revoke-session', adminController.revokeUserSession);
+app.post('/api/admin/security/block-user', adminController.blockUser);
+app.post('/api/admin/security/unblock-user', adminController.unblockUser);
 
 // Sprint 5 Endpoints (ADM-003, ADM-004, ADM-006, ST-001, ST-009, ST-010)
 const sprint5Controller = require('./modules/admin/sprint5.controller');
 app.get('/api/admin/channels', sprint5Controller.getChannels);
 app.post('/api/admin/channels/sync', sprint5Controller.forceSyncChannel);
+app.post('/api/admin/channels/configure', sprint5Controller.configureChannel);
+app.get('/api/admin/seo-listings', sprint5Controller.getSeoListings);
+app.post('/api/admin/seo-listings/sync', sprint5Controller.syncSeoListing);
+app.post('/api/admin/seo-listings/configure', sprint5Controller.configureSeoListing);
 app.get('/api/admin/franchise-apps', sprint5Controller.getFranchiseApplications);
 app.post('/api/admin/franchise-apps/action', sprint5Controller.handleFranchiseAppAction);
 app.post('/api/staff/instant-payout/request', sprint5Controller.requestInstantPayout);
+app.get('/api/owner/integrations', sprint5Controller.getOwnerIntegrations);
+app.post('/api/admin/integrations/disconnect', sprint5Controller.disconnectChannel);
 
 // Public SEO Metadata & Sitemap XML endpoints
 const seoController = require('./modules/seo/seo.controller');

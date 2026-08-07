@@ -1,16 +1,37 @@
 const { getDatabasePool } = require('../../config/database');
 
+// Ensure discount_code column exists in customer_notifications table on startup
+(async () => {
+  try {
+    const pool = getDatabasePool();
+    await pool.execute(`ALTER TABLE customer_notifications ADD COLUMN discount_code VARCHAR(50) NULL`);
+    console.log('[Migration] Checked/Added discount_code column to customer_notifications.');
+  } catch (err) {
+    // Column likely already exists
+  }
+})();
+
 /**
  * Create a notification for a specific user
  */
-async function createCustomerNotification({ userId, restaurantId, type, title, message }) {
+async function createCustomerNotification({ userId, restaurantId, type, title, message, discountCode = null }) {
   const pool = getDatabasePool();
   const [result] = await pool.execute(
-    `INSERT INTO customer_notifications (user_id, restaurant_id, type, title, message)
-     VALUES (?, ?, ?, ?, ?)`,
-    [userId, restaurantId, type, title, message]
+    `INSERT INTO customer_notifications (user_id, restaurant_id, type, title, message, discount_code)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [userId, restaurantId, type, title, message, discountCode]
   );
-  return { id: result.insertId, userId, restaurantId, type, title, message, isRead: false, createdAt: new Date().toISOString() };
+  return {
+    id: result.insertId,
+    userId,
+    restaurantId,
+    type,
+    title,
+    message,
+    discountCode,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  };
 }
 
 /**
@@ -20,7 +41,7 @@ async function getCustomerNotifications(userId) {
   const pool = getDatabasePool();
   const [rows] = await pool.execute(
     `SELECT id, user_id AS userId, restaurant_id AS restaurantId, type, title, message,
-            is_read AS isRead, created_at AS createdAt
+            discount_code AS discountCode, is_read AS isRead, created_at AS createdAt
      FROM customer_notifications
      WHERE user_id = ?
      ORDER BY created_at DESC
