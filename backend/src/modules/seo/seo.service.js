@@ -2,29 +2,63 @@ const { getDatabasePool } = require('../../config/database');
 
 async function getSeoSettings(restaurantId) {
   const pool = getDatabasePool();
-  const [rows] = await pool.execute(
-    `SELECT id, restaurant_id AS restaurantId, meta_title AS metaTitle, meta_description AS metaDescription, meta_keywords AS metaKeywords, structured_data_json AS structuredDataJson, sitemap_enabled AS sitemapEnabled, last_submitted_sitemap AS lastSubmittedSitemap 
-     FROM seo_settings 
-     WHERE restaurant_id = ?`,
-    [restaurantId]
-  );
-  if (rows.length === 0) {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT id, restaurant_id AS restaurantId, meta_title AS metaTitle, meta_description AS metaDescription, meta_keywords AS metaKeywords, structured_data_json AS structuredDataJson, sitemap_enabled AS sitemapEnabled, last_submitted_sitemap AS lastSubmittedSitemap 
+       FROM seo_settings 
+       WHERE restaurant_id = ?`,
+      [restaurantId]
+    );
+    if (rows.length === 0) {
+      return {
+        restaurantId,
+        metaTitle: 'Best Italian Pizza & Pasta in Town | RestruRent',
+        metaDescription: 'Taste authentic stone-baked Italian pizza and artisan fresh pasta made from organic local ingredients. Order online now for fast contact-free delivery.',
+        metaKeywords: 'italian food, pizza delivery, pasta near me, best italian restaurant',
+        structuredDataJson: '{"@context":"https://schema.org","@type":"Restaurant","name":"RestruRent","image":"https://images.unsplash.com/photo-1517248135467-4c7edcad34c4","priceRange":"$$"}',
+        sitemapEnabled: true,
+        lastSubmittedSitemap: null
+      };
+    }
+    return rows[0];
+  } catch (err) {
+    console.warn('[SEO] Failed to fetch seo_settings, using fallback defaults:', err.message);
     return {
       restaurantId,
-      metaTitle: '',
-      metaDescription: '',
-      metaKeywords: '',
-      structuredDataJson: '{}',
+      metaTitle: 'Best Italian Pizza & Pasta in Town | RestruRent',
+      metaDescription: 'Taste authentic stone-baked Italian pizza and artisan fresh pasta made from organic local ingredients. Order online now for fast contact-free delivery.',
+      metaKeywords: 'italian food, pizza delivery, pasta near me, best italian restaurant',
+      structuredDataJson: '{"@context":"https://schema.org","@type":"Restaurant","name":"RestruRent","image":"https://images.unsplash.com/photo-1517248135467-4c7edcad34c4","priceRange":"$$"}',
       sitemapEnabled: true,
       lastSubmittedSitemap: null
     };
   }
-  return rows[0];
 }
 
 async function updateSeoSettings(restaurantId, payload) {
   const pool = getDatabasePool();
   
+  // Auto-create table if it doesn't exist yet (lazy migration)
+  try {
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS seo_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id INT NOT NULL,
+        meta_title VARCHAR(255) NOT NULL,
+        meta_description VARCHAR(500) NOT NULL,
+        meta_keywords VARCHAR(500) NOT NULL,
+        structured_data_json TEXT,
+        sitemap_enabled BOOLEAN DEFAULT TRUE,
+        last_submitted_sitemap TIMESTAMP NULL DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE INDEX(restaurant_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+  } catch (err) {
+    console.error('[SEO] Auto-creation of seo_settings table failed:', err.message);
+  }
+
   const [rows] = await pool.execute(
     'SELECT id FROM seo_settings WHERE restaurant_id = ?',
     [restaurantId]

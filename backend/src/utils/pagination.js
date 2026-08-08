@@ -46,8 +46,8 @@ async function executePaginatedQuery({
   const total = Number(countRows[0]?.total || 0);
   const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
   const [rows] = await pool.execute(
-    `${selectClause} ${fromClause}${whereSql} ORDER BY ${sortColumn} ${order} LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
+    `${selectClause} ${fromClause}${whereSql} ORDER BY ${sortColumn} ${order} LIMIT ${Number(limit)} OFFSET ${Number(offset)}`,
+    params
   );
 
   return {
