@@ -4,6 +4,7 @@ const {
   getNotificationById,
   getNotificationsByRestaurantId,
   markNotificationAsRead,
+  markAllNotificationsAsRead,
   deleteNotification
 } = require('./notification.service');
 const { sendSuccess, sendError } = require('../../utils/apiResponse');
@@ -37,7 +38,7 @@ async function getById(request, response, next) {
     if (!notification) {
       return sendError(response, { statusCode: 404, message: 'Notification not found.' });
     }
-    if (!belongsToAuthenticatedRestaurant(request, notification)) {
+    if (notification.restaurantId && !belongsToAuthenticatedRestaurant(request, notification)) {
       return sendError(response, { statusCode: 403, message: 'Forbidden. Restaurant access mismatch.' });
     }
 
@@ -53,7 +54,7 @@ async function markRead(request, response, next) {
     if (!existingNotification) {
       return sendError(response, { statusCode: 404, message: 'Notification not found.' });
     }
-    if (!belongsToAuthenticatedRestaurant(request, existingNotification)) {
+    if (existingNotification.restaurantId && !belongsToAuthenticatedRestaurant(request, existingNotification)) {
       return sendError(response, { statusCode: 403, message: 'Forbidden. Restaurant access mismatch.' });
     }
 

@@ -116,13 +116,15 @@ async function markNotificationAsRead(id) {
 
 async function markAllNotificationsAsRead(restaurantId, userId = null) {
   const pool = getDatabasePool();
-  if (userId) {
+  if (restaurantId && userId) {
     await pool.execute(
-      'UPDATE notifications SET is_read = 1 WHERE restaurant_id = ? AND (user_id = ? OR user_id IS NULL)',
+      'UPDATE notifications SET is_read = 1 WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND (user_id = ? OR user_id IS NULL)',
       [restaurantId, userId]
     );
+  } else if (restaurantId) {
+    await pool.execute('UPDATE notifications SET is_read = 1 WHERE restaurant_id = ? OR restaurant_id IS NULL', [restaurantId]);
   } else {
-    await pool.execute('UPDATE notifications SET is_read = 1 WHERE restaurant_id = ?', [restaurantId]);
+    await pool.execute('UPDATE notifications SET is_read = 1');
   }
   return true;
 }
