@@ -11,6 +11,7 @@ function getDatabasePool() {
       database: DB_NAME,
       user: DB_USER,
       password: DB_PASSWORD,
+      ssl: DB_HOST && !DB_HOST.includes('localhost') && DB_HOST !== '127.0.0.1' ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0
