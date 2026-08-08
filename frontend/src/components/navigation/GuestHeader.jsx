@@ -39,10 +39,6 @@ function GuestHeader({ cartQuantity = 0, onCartClick }) {
         </div>
 
         <div className="d-flex align-items-center gap-2">
-          <button aria-label="Search menu" className="btn btn-light guest-icon-action d-none d-sm-inline-flex" type="button">
-            <i className="bi bi-search" aria-hidden="true" />
-          </button>
-
           {/* Customer Notification Bell — only visible to logged-in customers */}
           <CustomerNotificationBell />
 
