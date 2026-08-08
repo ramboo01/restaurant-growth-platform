@@ -27,7 +27,7 @@ function formatCurrency(value) {
   return `$${Number(value).toFixed(2)}`;
 }
 
-function LiveDriverMap({ driverLocation }) {
+function LiveDriverMap({ driverLocation, defaultCoords }) {
   const mapRef = useRef(null);
   const instanceRef = useRef(null);
   const markerRef = useRef(null);
@@ -35,8 +35,8 @@ function LiveDriverMap({ driverLocation }) {
   useEffect(() => {
     if (!mapRef.current) return;
 
-    const lat = Number(driverLocation?.lat || 28.6139);
-    const lng = Number(driverLocation?.lng || 77.2090);
+    const lat = Number(driverLocation?.lat || defaultCoords?.lat || 28.6139);
+    const lng = Number(driverLocation?.lng || defaultCoords?.lng || 77.2090);
 
     if (!instanceRef.current) {
       try {
@@ -66,7 +66,7 @@ function LiveDriverMap({ driverLocation }) {
         markerRef.current.setLatLng([lat, lng]);
       }
     }
-  }, [driverLocation]);
+  }, [driverLocation, defaultCoords]);
 
   return (
     <div 
@@ -134,6 +134,25 @@ function GuestOrderTrackingPage() {
 
   // Real-time Driver GPS & Order Socket updates
   const [driverLocation, setDriverLocation] = useState(null);
+  const [deviceCoords, setDeviceCoords] = useState(null);
+
+  // Get real physical device location if available
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setDeviceCoords({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (err) => {
+          console.warn('Geolocation access failed or denied:', err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, []);
 
   useEffect(() => {
     if (!orderId) return undefined;
@@ -294,7 +313,7 @@ function GuestOrderTrackingPage() {
                   </div>
 
                   <div className="p-0 text-center position-relative" style={{ minHeight: '260px', backgroundColor: '#1a1d21' }}>
-                    <LiveDriverMap driverLocation={driverLocation} />
+                    <LiveDriverMap driverLocation={driverLocation} defaultCoords={deviceCoords} />
                   </div>
 
                   <div className="p-3 bg-secondary bg-opacity-25 d-flex justify-content-between align-items-center extra-small text-white-50">

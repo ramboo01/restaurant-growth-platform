@@ -278,14 +278,40 @@ function DriverOrdersPage() {
                         className="btn btn-sm btn-outline-primary w-100"
                         onClick={() => {
                           if (socket) {
-                            socket.emit('driverLocationUpdate', {
-                              orderId: order.id,
-                              lat: 28.6139 + (Math.random() - 0.5) * 0.01,
-                              lng: 77.2090 + (Math.random() - 0.5) * 0.01,
-                              speed: 32,
-                              heading: 90
-                            });
-                            showToast(`GPS ping sent for order #${order.orderNumber}`);
+                            if (typeof window !== 'undefined' && navigator.geolocation) {
+                              navigator.geolocation.getCurrentPosition(
+                                (pos) => {
+                                  socket.emit('driverLocationUpdate', {
+                                    orderId: order.id,
+                                    lat: pos.coords.latitude,
+                                    lng: pos.coords.longitude,
+                                    speed: Math.round(pos.coords.speed || 32),
+                                    heading: Math.round(pos.coords.heading || 90)
+                                  });
+                                  showToast(`Live GPS signal broadcasted (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
+                                },
+                                (err) => {
+                                  socket.emit('driverLocationUpdate', {
+                                    orderId: order.id,
+                                    lat: 28.6139 + (Math.random() - 0.5) * 0.01,
+                                    lng: 77.2090 + (Math.random() - 0.5) * 0.01,
+                                    speed: 32,
+                                    heading: 90
+                                  });
+                                  showToast(`GPS ping sent for order #${order.orderNumber}`);
+                                },
+                                { enableHighAccuracy: true, timeout: 5000 }
+                              );
+                            } else {
+                              socket.emit('driverLocationUpdate', {
+                                orderId: order.id,
+                                lat: 28.6139 + (Math.random() - 0.5) * 0.01,
+                                lng: 77.2090 + (Math.random() - 0.5) * 0.01,
+                                speed: 32,
+                                heading: 90
+                              });
+                              showToast(`GPS ping sent for order #${order.orderNumber}`);
+                            }
                           }
                         }}
                       >
