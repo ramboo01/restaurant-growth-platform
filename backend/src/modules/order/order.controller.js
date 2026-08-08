@@ -127,8 +127,7 @@ async function updateStatus(request, response, next) {
 
     try {
       const socketUtils = require('../../utils/socket');
-      const io = socketUtils.getIO();
-      io.to(`restaurant_${order.restaurantId}`).emit('orderUpdated', order);
+      socketUtils.emitOrderStatusUpdate(order.id, order.restaurantId, order);
     } catch (socketErr) {
       console.error('[Socket] Failed to emit orderUpdated event:', socketErr.message);
     }

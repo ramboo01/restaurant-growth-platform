@@ -43,8 +43,34 @@ async function updateDeliveryConfig(req, res, next) {
   }
 }
 
+async function updateDriverLocation(req, res, next) {
+  try {
+    const { orderId, restaurantId, lat, lng, heading, speed } = req.body;
+    const socketUtils = require('../../utils/socket');
+    
+    socketUtils.emitDriverLocation(orderId, restaurantId || req.user?.restaurantId, {
+      orderId,
+      lat,
+      lng,
+      heading,
+      speed,
+      timestamp: new Date()
+    });
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: 'Driver location updated and broadcasted live',
+      data: { orderId, lat, lng }
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getDeliveryConfig,
   getPublicDeliveryConfig,
-  updateDeliveryConfig
+  updateDeliveryConfig,
+  updateDriverLocation
 };
+

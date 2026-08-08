@@ -11,4 +11,7 @@ router.get('/public/:restaurantId', deliveryController.getPublicDeliveryConfig);
 router.get('/', verifyJwt, deliveryController.getDeliveryConfig);
 router.put('/', verifyJwt, deliveryController.updateDeliveryConfig);
 
+// Driver location update endpoint
+router.post('/location', deliveryController.updateDriverLocation);
+
 module.exports = router;

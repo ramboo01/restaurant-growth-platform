@@ -3,6 +3,7 @@ import api from '../../services/api.js';
 
 function AdminChannelSyncPage() {
   const [channels, setChannels] = useState([]);
+  const [circuitBreakers, setCircuitBreakers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
   const [syncingId, setSyncingId] = useState(null);
@@ -12,12 +13,16 @@ function AdminChannelSyncPage() {
     setTimeout(() => setToast(''), 3500);
   };
 
-  const loadChannels = async () => {
+  const loadChannelsAndCircuits = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/admin/channels').catch(() => null);
-      if (res?.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-        setChannels(res.data.data.map(ch => ({
+      const [chRes, cbRes] = await Promise.all([
+        api.get('/api/admin/channels').catch(() => null),
+        api.get('/api/admin/circuit-breakers').catch(() => null)
+      ]);
+
+      if (chRes?.data?.data && Array.isArray(chRes.data.data)) {
+        setChannels(chRes.data.data.map(ch => ({
           id: ch.id,
           name: ch.channel_name,
           type: ch.channel_type || 'Integration',
@@ -29,23 +34,40 @@ function AdminChannelSyncPage() {
       } else {
         setChannels([]);
       }
+
+      if (cbRes?.data?.data && Array.isArray(cbRes.data.data)) {
+        setCircuitBreakers(cbRes.data.data);
+      } else {
+        setCircuitBreakers([]);
+      }
     } catch (err) {
-      console.error('Failed to load channels:', err);
+      console.error('Failed to load channels and circuit breakers:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadChannels();
+    loadChannelsAndCircuits();
   }, []);
+
+  const resetCircuit = async (channelName) => {
+    try {
+      await api.post('/api/admin/circuit-breakers/reset', { restaurantId: 1, channelName });
+      showToast(`🎉 Circuit breaker for ${channelName} reset to CLOSED! Retries enabled.`);
+      await loadChannelsAndCircuits();
+    } catch (err) {
+      console.error(err);
+      showToast('❌ Failed to reset circuit breaker.');
+    }
+  };
 
   const triggerRetry = async (id) => {
     try {
       setSyncingId(id);
       await api.post('/api/admin/channels/sync', { id });
       showToast('🎉 Sync adapter reset successfully. Channel synced live in database!');
-      await loadChannels();
+      await loadChannelsAndCircuits();
     } catch (err) {
       console.error(err);
       showToast('❌ Sync failed. Please try again.');
@@ -61,7 +83,7 @@ function AdminChannelSyncPage() {
         await api.post('/api/admin/channels/sync', { id: ch.id }).catch(() => {});
       }
       showToast('🎉 All channels synced successfully! Database updated in real-time.');
-      await loadChannels();
+      await loadChannelsAndCircuits();
     } catch (err) {
       console.error(err);
       showToast('❌ Bulk sync failed.');
@@ -76,9 +98,9 @@ function AdminChannelSyncPage() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold mb-1">
-            <i className="bi bi-diagram-3-fill text-primary me-2"></i> Channel Sync Health
+            <i className="bi bi-diagram-3-fill text-primary me-2"></i> Channel Sync & Circuit Breakers
           </h2>
-          <p className="text-muted mb-0">Manage platform-wide API connections, delivery listings syncs, and system circuit-breakers.</p>
+          <p className="text-muted mb-0">Manage platform-wide API connections, delivery listing syncs, and system circuit-breakers.</p>
         </div>
       </div>
 
@@ -88,6 +110,69 @@ function AdminChannelSyncPage() {
           <div>{toast}</div>
         </div>
       )}
+
+      {/* Circuit Breaker Status Banner */}
+      <div className="card border-0 shadow-sm rounded-3 mb-4 bg-light">
+        <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+          <div>
+            <h5 className="fw-bold mb-0">
+              <i className="bi bi-cpu-fill text-warning me-2"></i> System Circuit Breakers
+            </h5>
+            <small className="text-muted">Automatically pauses retry storms after 5 failures and escalates 30-min outages via WhatsApp.</small>
+          </div>
+        </div>
+        <div className="card-body p-0">
+          {circuitBreakers.length === 0 ? (
+            <div className="p-3 text-muted small">No active circuit breaker trips recorded. All channels operating within health thresholds.</div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-sm align-middle mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Channel</th>
+                    <th>Circuit State</th>
+                    <th>Failures (Max 5)</th>
+                    <th>WhatsApp Alert</th>
+                    <th>Last Failure</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {circuitBreakers.map(cb => (
+                    <tr key={cb.id}>
+                      <td className="fw-bold">{cb.channelName}</td>
+                      <td>
+                        <span className={`badge bg-${cb.circuitState === 'CLOSED' ? 'success' : cb.circuitState === 'OPEN' ? 'danger' : 'warning'} px-2 py-1`}>
+                          {cb.circuitState}
+                        </span>
+                      </td>
+                      <td className="fw-bold text-muted">{cb.consecutiveFailures} / 5</td>
+                      <td>
+                        {cb.whatsappAlertSent ? (
+                          <span className="badge bg-danger bg-opacity-10 text-danger border border-danger">Sent (30-min outage)</span>
+                        ) : (
+                          <span className="text-muted small">Not required</span>
+                        )}
+                      </td>
+                      <td className="text-muted small">{cb.lastFailureAt ? new Date(cb.lastFailureAt).toLocaleString() : 'N/A'}</td>
+                      <td>
+                        {cb.circuitState === 'OPEN' && (
+                          <button
+                            className="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold"
+                            onClick={() => resetCircuit(cb.channelName)}
+                          >
+                            Reset Circuit
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Sync Table */}
       <div className="card border-0 shadow-sm rounded-3">

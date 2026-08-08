@@ -385,6 +385,36 @@ async function disconnectChannel(req, res, next) {
   }
 }
 
+// ─── Circuit Breaker Management ───
+async function getCircuitBreakers(req, res, next) {
+  try {
+    const { getChannelSyncStates } = require('./channelSync.service');
+    const states = await getChannelSyncStates(req.query.restaurantId);
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: 'Circuit breaker states fetched',
+      data: states
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function resetCircuitBreaker(req, res, next) {
+  try {
+    const { resetChannelCircuitBreaker } = require('./channelSync.service');
+    const { restaurantId, channelName } = req.body;
+    const result = await resetChannelCircuitBreaker(restaurantId || 1, channelName);
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: result.message,
+      data: result
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getChannels,
   forceSyncChannel,
@@ -396,5 +426,7 @@ module.exports = {
   configureChannel,
   configureSeoListing,
   getOwnerIntegrations,
-  disconnectChannel
+  disconnectChannel,
+  getCircuitBreakers,
+  resetCircuitBreaker
 };

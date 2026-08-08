@@ -11,9 +11,30 @@ const ORDER_SORT_MAP = {
 };
 
 async function createOrder(payload) {
+  const pool = getDatabasePool();
+
+  // Server-side Delivery Minimum Order Value Guard
+  const fulfillmentType = payload.fulfillmentDetails?.type || 'Pickup';
+  if (fulfillmentType === 'Delivery') {
+    try {
+      const [delConfigRows] = await pool.execute(
+        'SELECT min_order_value FROM delivery_configs WHERE restaurant_id = ? LIMIT 1',
+        [payload.restaurantId]
+      );
+      if (delConfigRows.length > 0 && delConfigRows[0].min_order_value) {
+        const minVal = Number(delConfigRows[0].min_order_value);
+        if (minVal > 0 && Number(payload.totalAmount) < minVal) {
+          throw new Error(`Minimum delivery subtotal requirement is $${minVal.toFixed(2)}. Your subtotal: $${Number(payload.totalAmount).toFixed(2)}`);
+        }
+      }
+    } catch (delErr) {
+      if (delErr.message.includes('Minimum delivery subtotal')) throw delErr;
+      console.warn('[Order Validation] Could not check delivery config:', delErr.message);
+    }
+  }
+
   // Server-side Loyalty Reward Validation and Point Deduction
   if (payload.fulfillmentDetails && payload.fulfillmentDetails.redeemedRewardId) {
-    const pool = getDatabasePool();
     const rewardId = payload.fulfillmentDetails.redeemedRewardId;
     const phone = payload.customerPhone.trim();
     const restaurantId = payload.restaurantId;
@@ -63,24 +84,47 @@ async function createOrder(payload) {
 
   const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
 
-  const [result] = await getDatabasePool().execute(
-    `INSERT INTO orders
-      (restaurant_id, customer_name, customer_phone, order_number, total_amount, order_status, payment_status, items, fulfillment_details, special_instructions, delivery_otp)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      payload.restaurantId,
-      payload.customerName.trim(),
-      payload.customerPhone.trim(),
-      payload.orderNumber.trim(),
-      payload.totalAmount,
-      payload.orderStatus,
-      payload.paymentStatus,
-      payload.items ? JSON.stringify(payload.items) : null,
-      payload.fulfillmentDetails ? JSON.stringify(payload.fulfillmentDetails) : null,
-      payload.specialInstructions ? payload.specialInstructions.trim() : null,
-      deliveryOtp
-    ]
-  );
+  let result;
+  try {
+    const [insertResult] = await getDatabasePool().execute(
+      `INSERT INTO orders
+        (restaurant_id, customer_name, customer_phone, order_number, total_amount, order_status, payment_status, items, fulfillment_details, special_instructions, delivery_otp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        payload.restaurantId,
+        payload.customerName.trim(),
+        payload.customerPhone.trim(),
+        payload.orderNumber.trim(),
+        payload.totalAmount,
+        payload.orderStatus,
+        payload.paymentStatus,
+        payload.items ? JSON.stringify(payload.items) : null,
+        payload.fulfillmentDetails ? JSON.stringify(payload.fulfillmentDetails) : null,
+        payload.specialInstructions ? payload.specialInstructions.trim() : null,
+        deliveryOtp
+      ]
+    );
+    result = insertResult;
+  } catch (insertErr) {
+    console.error('[Order Service] Database order insertion failed post-payment:', insertErr.message);
+    if (payload.paymentStatus === 'Paid' || payload.fulfillmentDetails?.paymentIntentId) {
+      try {
+        const { logUnfulfilledPayment } = require('./reconciliation.service');
+        await logUnfulfilledPayment({
+          restaurantId: payload.restaurantId,
+          orderNumber: payload.orderNumber,
+          customerName: payload.customerName,
+          customerPhone: payload.customerPhone,
+          totalAmount: payload.totalAmount,
+          paymentIntentId: payload.fulfillmentDetails?.paymentIntentId || `pi_${Date.now()}`,
+          errorReason: `Order DB insertion failed: ${insertErr.message}`
+        });
+      } catch (reconErr) {
+        console.error('[Reconciliation] Failed to log unfulfilled payment:', reconErr.message);
+      }
+    }
+    throw insertErr;
+  }
 
   const order = await getOrderById(result.insertId);
 

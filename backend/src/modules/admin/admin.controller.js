@@ -973,6 +973,65 @@ async function activateStoreGoLive(req, res, next) {
   }
 }
 
+// ─── Guest Graph Intelligence Handlers ───
+async function getGuestGraphCandidates(req, res, next) {
+  try {
+    const { getPendingMergeCandidates } = require('../customer/guestMerge.service');
+    const candidates = await getPendingMergeCandidates(req.query.restaurantId);
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: 'Pending guest graph merge candidates fetched',
+      data: candidates
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function reviewGuestGraphCandidate(req, res, next) {
+  try {
+    const { reviewMergeCandidate } = require('../customer/guestMerge.service');
+    const { candidateId, action, reviewNote } = req.body;
+    const result = await reviewMergeCandidate(candidateId, action, reviewNote, req.user?.id || 1);
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: `Merge candidate ${action === 'APPROVE' ? 'Approved & Profiles Merged' : 'Rejected & Profiles Separated'}`,
+      data: result
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function getGuestGraphHistory(req, res, next) {
+  try {
+    const { getMergeHistory } = require('../customer/guestMerge.service');
+    const history = await getMergeHistory(req.query.restaurantId);
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: 'Merge history fetched successfully',
+      data: history
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function revertGuestGraphMerge(req, res, next) {
+  try {
+    const { revertProfileMerge } = require('../customer/guestMerge.service');
+    const { historyId, revertReason } = req.body;
+    const result = await revertProfileMerge(historyId, revertReason);
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: 'Profile merge successfully reverted! Secondary guest profile restored.',
+      data: result
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getPrivacyRequests,
   processErasureRequest,
@@ -995,7 +1054,11 @@ module.exports = {
   unblockUser,
   getOnboardingList,
   updateOnboardingStep,
-  activateStoreGoLive
+  activateStoreGoLive,
+  getGuestGraphCandidates,
+  reviewGuestGraphCandidate,
+  getGuestGraphHistory,
+  revertGuestGraphMerge
 };
 
 

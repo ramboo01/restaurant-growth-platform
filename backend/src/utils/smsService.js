@@ -106,7 +106,30 @@ function verifyOtp(phone, inputOtp) {
   return { success: true, message: 'Mobile number verified successfully.' };
 }
 
+/**
+ * Send general SMS message (Twilio / Fast2SMS / Simulated Fallback)
+ */
+async function sendSMS(phone, message) {
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+  console.log(`[SMS Service] Dispatching message to ${phone}: "${message}"`);
+  if (twilioSid && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+    try {
+      const client = require('twilio')(twilioSid, process.env.TWILIO_AUTH_TOKEN);
+      await client.messages.create({
+        body: message,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: phone.startsWith('+') ? phone : `+91${phone}`
+      });
+      return { sent: true, provider: 'Twilio' };
+    } catch (err) {
+      console.error('[SMS Service] Twilio error:', err.message);
+    }
+  }
+  return { sent: true, provider: 'Simulated' };
+}
+
 module.exports = {
   generateAndSendOtp,
-  verifyOtp
+  verifyOtp,
+  sendSMS
 };

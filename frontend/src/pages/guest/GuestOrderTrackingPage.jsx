@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import L from 'leaflet';
 import { trackOrder } from '../../services/orderService.js';
 
 const statusTimeline = [
@@ -24,6 +25,55 @@ const statusLabels = {
 
 function formatCurrency(value) {
   return `$${Number(value).toFixed(2)}`;
+}
+
+function LiveDriverMap({ driverLocation }) {
+  const mapRef = useRef(null);
+  const instanceRef = useRef(null);
+  const markerRef = useRef(null);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const lat = Number(driverLocation?.lat || 28.6139);
+    const lng = Number(driverLocation?.lng || 77.2090);
+
+    if (!instanceRef.current) {
+      try {
+        const map = L.map(mapRef.current, { zoomControl: false }).setView([lat, lng], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19
+        }).addTo(map);
+
+        const icon = L.divIcon({
+          className: 'custom-leaflet-driver',
+          html: '<div style="background:#0d6efd; color:#fff; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 0 12px rgba(13,110,253,0.8); border:3px solid #fff; font-size:18px;"><i class="bi bi-bicycle"></i></div>',
+          iconSize: [38, 38],
+          iconAnchor: [19, 19]
+        });
+
+        const marker = L.marker([lat, lng], { icon }).addTo(map);
+        marker.bindPopup('<b style="color:#0d6efd">Driver Live GPS</b><br>On the way to your address!').openPopup();
+
+        instanceRef.current = map;
+        markerRef.current = marker;
+      } catch (err) {
+        console.error('Leaflet initialization error:', err);
+      }
+    } else {
+      instanceRef.current.panTo([lat, lng]);
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng]);
+      }
+    }
+  }, [driverLocation]);
+
+  return (
+    <div 
+      ref={mapRef} 
+      style={{ width: '100%', height: '260px', borderRadius: '0', zIndex: 1 }} 
+    />
+  );
 }
 
 function GuestOrderTrackingPage() {
@@ -82,9 +132,11 @@ function GuestOrderTrackingPage() {
     return () => clearInterval(timer);
   }, [orderId]);
 
-  // WebSocket real-time updates
+  // Real-time Driver GPS & Order Socket updates
+  const [driverLocation, setDriverLocation] = useState(null);
+
   useEffect(() => {
-    if (!orderId || !order?.restaurantId) return undefined;
+    if (!orderId) return undefined;
 
     const socketUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
     const socket = io(socketUrl, {
@@ -93,7 +145,12 @@ function GuestOrderTrackingPage() {
 
     socket.on('connect', () => {
       console.log('[Tracking Socket] Connected to server:', socket.id);
-      socket.emit('joinRestaurantRoom', order.restaurantId);
+      if (order?.id) {
+        socket.emit('joinOrderRoom', order.id);
+      }
+      if (order?.restaurantId) {
+        socket.emit('joinRestaurantRoom', order.restaurantId);
+      }
     });
 
     const handleUpdate = (updatedOrder) => {
@@ -104,21 +161,26 @@ function GuestOrderTrackingPage() {
         setOrder(prev => {
           if (!prev) return updatedOrder;
           const newStatus = updatedOrder.orderStatus || updatedOrder.order_status;
-          if (prev.orderStatus !== newStatus) {
-            return { ...prev, orderStatus: newStatus };
-          }
-          return prev;
+          return { ...prev, ...updatedOrder, orderStatus: newStatus || prev.orderStatus };
         });
       }
     };
 
+    const handleDriverLocation = (locationData) => {
+      console.log('[Tracking Socket] Driver GPS update:', locationData);
+      setDriverLocation(locationData);
+    };
+
     socket.on('orderUpdated', handleUpdate);
-    socket.on('ORDER_STATUS_CHANGED', handleUpdate);
+    socket.on('order_status_updated', handleUpdate);
+    socket.on('driver_location_changed', handleDriverLocation);
 
     return () => {
       socket.off('orderUpdated', handleUpdate);
-      socket.off('ORDER_STATUS_CHANGED', handleUpdate);
-      socket.emit('leaveRestaurantRoom', order.restaurantId);
+      socket.off('order_status_updated', handleUpdate);
+      socket.off('driver_location_changed', handleDriverLocation);
+      if (order?.id) socket.emit('leaveOrderRoom', order.id);
+      if (order?.restaurantId) socket.emit('leaveRestaurantRoom', order.restaurantId);
       socket.disconnect();
     };
   }, [orderId, order?.restaurantId, order?.id]);
@@ -214,6 +276,35 @@ function GuestOrderTrackingPage() {
                   </div>
                   <div className="badge bg-primary fs-5 px-3 py-2 text-white font-monospace">
                     {order.deliveryOtp || order.delivery_otp || '1234'}
+                  </div>
+                </div>
+              )}
+
+              {/* Live Driver GPS Tracking Radar & Map */}
+              {(order.orderStatus === 'Out for Delivery' || driverLocation) && !isDelivered && (
+                <div className="card bg-dark text-white border-0 shadow-sm rounded-4 overflow-hidden mb-4 position-relative">
+                  <div className="p-3 bg-gradient d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-50">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="spinner-grow spinner-grow-sm text-success" role="status"></span>
+                      <span className="fw-bold small text-light">LIVE DRIVER GPS TRACKER (OpenStreetMap)</span>
+                    </div>
+                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 extra-small">
+                      <i className="bi bi-broadcast me-1"></i> Real-time WebSocket Active
+                    </span>
+                  </div>
+
+                  <div className="p-0 text-center position-relative" style={{ minHeight: '260px', backgroundColor: '#1a1d21' }}>
+                    <LiveDriverMap driverLocation={driverLocation} />
+                  </div>
+
+                  <div className="p-3 bg-secondary bg-opacity-25 d-flex justify-content-between align-items-center extra-small text-white-50">
+                    <span>Driver: <strong>{order.driverName || 'Owned Fleet Partner'}</strong></span>
+                    <span>
+                      {driverLocation ? (
+                        <span className="text-info me-2">Speed: {driverLocation.speed || '24'} km/h</span>
+                      ) : null}
+                      ETA: <strong className="text-white">{estimatedTime}</strong>
+                    </span>
                   </div>
                 </div>
               )}

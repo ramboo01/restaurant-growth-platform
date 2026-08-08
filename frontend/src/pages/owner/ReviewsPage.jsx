@@ -75,7 +75,7 @@ function ReviewsPage() {
   const handlePublishReply = async (id, currentDraft) => {
     if (!currentDraft) return;
     try {
-      await updateReview(id, { replyStatus: 'Replied' });
+      await updateReview(id, { replyStatus: 'Replied', aiReplyDraft: currentDraft });
       showToast('Reply published successfully!');
       loadReviews();
     } catch (err) {

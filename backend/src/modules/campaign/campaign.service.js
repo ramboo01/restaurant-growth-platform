@@ -143,6 +143,8 @@ async function sendCampaign(id, restaurantId) {
     // Insert customer notifications and emit real-time socket events
     console.log(`\n========================================\n📢 [CAMPAIGN BROADCAST] Sent via ${campaign.channel.toUpperCase()}\nTarget Segment: ${segment}\nRecipients: ${userRows.length} users\nMessage: "${campaign.content}"\n========================================\n`);
 
+    const { sendUnifiedNotification } = require('../../services/notificationService');
+
     for (const row of userRows) {
       try {
         const notif = await createCustomerNotification({
@@ -152,6 +154,17 @@ async function sendCampaign(id, restaurantId) {
           title: `📢 ${campaign.name}`,
           message: campaign.content,
           discountCode: campaign.discountCode
+        });
+
+        // Enforce Quiet Hours (9 PM - 8 AM) & Frequency Caps via Unified Notification Engine
+        await sendUnifiedNotification({
+          restaurantId,
+          recipient: row.id,
+          subject: `📢 ${campaign.name}`,
+          message: campaign.content,
+          type: 'Marketing',
+          channel: campaign.channel || 'SMS',
+          isTimeSensitive: false
         });
 
         io.to(`user_${row.id}`).emit('customerNotification', notif);

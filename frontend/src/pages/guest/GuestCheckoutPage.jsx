@@ -277,6 +277,13 @@ function GuestCheckoutPage() {
       nextErrors.addressLine = 'Address line is required.';
     }
 
+    if (checkoutState.fulfillment === 'Delivery' && deliveryConfig?.minOrderValue) {
+      const minVal = Number(deliveryConfig.minOrderValue);
+      if (minVal > 0 && checkoutState.subtotal < minVal) {
+        nextErrors.addressLine = `Minimum order amount for delivery is $${minVal.toFixed(2)}. Current subtotal: $${checkoutState.subtotal.toFixed(2)}`;
+      }
+    }
+
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }

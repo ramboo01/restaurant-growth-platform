@@ -50,6 +50,34 @@ module.exports = {
         }
       });
 
+      // Per-order room — for live guest tracking (order status & real-time driver GPS)
+      socket.on('joinOrderRoom', (orderId) => {
+        if (orderId) {
+          const room = `order_${orderId}`;
+          socket.join(room);
+          console.log(`[Socket] Client ${socket.id} joined order room ${room}`);
+        }
+      });
+
+      socket.on('leaveOrderRoom', (orderId) => {
+        if (orderId) {
+          const room = `order_${orderId}`;
+          socket.leave(room);
+          console.log(`[Socket] Client ${socket.id} left order room ${room}`);
+        }
+      });
+
+      // Driver GPS location update event broadcast
+      socket.on('driverLocationUpdate', (data) => {
+        const { orderId, restaurantId, lat, lng, heading, speed } = data || {};
+        if (orderId) {
+          io.to(`order_${orderId}`).emit('driver_location_changed', { orderId, lat, lng, heading, speed, timestamp: new Date() });
+        }
+        if (restaurantId) {
+          io.to(`restaurant_${restaurantId}`).emit('driver_location_changed', { orderId, lat, lng, heading, speed, timestamp: new Date() });
+        }
+      });
+
       socket.on('disconnect', () => {
         console.log(`[Socket] Client disconnected: ${socket.id}`);
       });
@@ -62,5 +90,18 @@ module.exports = {
       throw new Error('Socket.io not initialized!');
     }
     return io;
+  },
+  emitOrderStatusUpdate: (orderId, restaurantId, statusData) => {
+    if (io) {
+      if (orderId) io.to(`order_${orderId}`).emit('order_status_updated', statusData);
+      if (restaurantId) io.to(`restaurant_${restaurantId}`).emit('order_status_updated', statusData);
+    }
+  },
+  emitDriverLocation: (orderId, restaurantId, locationData) => {
+    if (io) {
+      if (orderId) io.to(`order_${orderId}`).emit('driver_location_changed', locationData);
+      if (restaurantId) io.to(`restaurant_${restaurantId}`).emit('driver_location_changed', locationData);
+    }
   }
 };
+

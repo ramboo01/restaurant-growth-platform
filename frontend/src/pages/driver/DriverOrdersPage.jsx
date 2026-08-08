@@ -265,6 +265,35 @@ function DriverOrdersPage() {
                     </div>
                   </div>
 
+                  {order.orderStatus === 'Out for Delivery' && (
+                    <div className="bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 p-3 mb-3">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="small fw-bold text-primary">
+                          <i className="bi bi-geo-alt-fill me-1"></i> Driver Live GPS Signal
+                        </span>
+                        <span className="badge bg-success">Broadcasting</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary w-100"
+                        onClick={() => {
+                          if (socket) {
+                            socket.emit('driverLocationUpdate', {
+                              orderId: order.id,
+                              lat: 28.6139 + (Math.random() - 0.5) * 0.01,
+                              lng: 77.2090 + (Math.random() - 0.5) * 0.01,
+                              speed: 32,
+                              heading: 90
+                            });
+                            showToast(`GPS ping sent for order #${order.orderNumber}`);
+                          }
+                        }}
+                      >
+                        <i className="bi bi-broadcast me-1"></i> Send Live GPS Ping
+                      </button>
+                    </div>
+                  )}
+
                   <button
                     className={`btn mt-auto w-100 ${
                       order.orderStatus === 'Ready' 

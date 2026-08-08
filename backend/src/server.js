@@ -2,6 +2,7 @@ const http = require('http');
 const app = require('./app');
 const { PORT } = require('./config/env');
 const socketUtils = require('./utils/socket');
+const { startReconciliationWorker } = require('./workers/reconciliationWorker');
 
 const server = http.createServer(app);
 
@@ -10,4 +11,6 @@ socketUtils.init(server);
 
 server.listen(PORT, () => {
   console.log(`RestruRent backend listening on port ${PORT}`);
+  // Start background auto-reconciliation worker
+  startReconciliationWorker(30000);
 });

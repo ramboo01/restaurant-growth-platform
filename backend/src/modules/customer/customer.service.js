@@ -277,12 +277,26 @@ async function syncCustomerOrder(restaurantId, customerName, phone, email, order
     console.log(`[CRM] Updated customer ${customerName} (orders: ${nextOrders}, spent: ${nextSpent}, segment: ${segment})`);
   } else {
     const segment = calculateRFMSegment(1, Number(orderAmount), dateVal);
-    await pool.execute(
+    const [newResult] = await pool.execute(
       `INSERT INTO customers (restaurant_id, name, phone, email, total_orders, total_spent, last_order_at, segment)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [restaurantId, customerName.trim(), cleanPhone, cleanEmail, 1, Number(orderAmount), dateVal, segment]
     );
     console.log(`[CRM] Auto-created new customer ${customerName} with phone ${cleanPhone} (segment: ${segment})`);
+
+    // Trigger Guest Graph Probabilistic Identity Evaluation
+    try {
+      const { evaluateGuestIdentityOnIngest } = require('./guestMerge.service');
+      await evaluateGuestIdentityOnIngest(restaurantId, {
+        id: newResult.insertId,
+        customer_name: customerName.trim(),
+        name: customerName.trim(),
+        phone: cleanPhone,
+        email: cleanEmail
+      });
+    } catch (evalErr) {
+      console.error('[Guest Graph] Identity evaluation failed:', evalErr.message);
+    }
   }
 }
 

@@ -155,6 +155,12 @@ app.get('/api/admin/privacy/requests', adminController.getPrivacyRequests);
 app.post('/api/admin/privacy/process-erasure', adminController.processErasureRequest);
 app.post('/api/admin/privacy/merge-profiles', adminController.mergeProfiles);
 app.post('/api/admin/privacy/separate-profiles', adminController.separateProfiles);
+
+// Guest Graph Intelligence Routes
+app.get('/api/admin/guest-graph/candidates', adminController.getGuestGraphCandidates);
+app.post('/api/admin/guest-graph/review-candidate', adminController.reviewGuestGraphCandidate);
+app.get('/api/admin/guest-graph/history', adminController.getGuestGraphHistory);
+app.post('/api/admin/guest-graph/revert-merge', adminController.revertGuestGraphMerge);
 app.get('/api/admin/financial/payouts', adminController.getStorePayouts);
 app.post('/api/admin/financial/release-payout', adminController.releasePayout);
 app.post('/api/admin/financial/recalculate', adminController.recalculateStorePayouts);
@@ -176,6 +182,19 @@ const sprint5Controller = require('./modules/admin/sprint5.controller');
 app.get('/api/admin/channels', sprint5Controller.getChannels);
 app.post('/api/admin/channels/sync', sprint5Controller.forceSyncChannel);
 app.post('/api/admin/channels/configure', sprint5Controller.configureChannel);
+app.get('/api/admin/circuit-breakers', sprint5Controller.getCircuitBreakers);
+app.post('/api/admin/circuit-breakers/reset', sprint5Controller.resetCircuitBreaker);
+
+app.get('/api/admin/reconciliations', async (req, res, next) => {
+  try {
+    const { getReconciliationLogs } = require('./modules/order/reconciliation.service');
+    const logs = await getReconciliationLogs(req.query);
+    return res.status(200).json({ success: true, data: logs });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 app.get('/api/admin/seo-listings', sprint5Controller.getSeoListings);
 app.post('/api/admin/seo-listings/sync', sprint5Controller.syncSeoListing);
 app.post('/api/admin/seo-listings/configure', sprint5Controller.configureSeoListing);
