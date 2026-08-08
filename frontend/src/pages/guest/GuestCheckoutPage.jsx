@@ -41,7 +41,7 @@ function GuestCheckoutPage() {
 
   const [formValues, setFormValues] = useState({
     fullName: user?.name || '',
-    mobileNumber: localStorage.getItem('loyaltyPhone') || '',
+    mobileNumber: user?.phone || localStorage.getItem('loyaltyPhone') || '',
     email: user?.email || '',
     addressLine: '',
     city: '',
@@ -52,11 +52,12 @@ function GuestCheckoutPage() {
   // Auto-fill details when user details load
   useEffect(() => {
     if (user) {
+      const storedPhone = user.phone || localStorage.getItem('loyaltyPhone') || '';
       setFormValues((prev) => ({
         ...prev,
-        fullName: prev.fullName || user.name || '',
-        email: prev.email || user.email || '',
-        mobileNumber: prev.mobileNumber || localStorage.getItem('loyaltyPhone') || ''
+        fullName: user.name || prev.fullName,
+        email: user.email || prev.email,
+        mobileNumber: storedPhone || prev.mobileNumber
       }));
     }
   }, [user]);
@@ -251,6 +252,9 @@ function GuestCheckoutPage() {
     let finalVal = value;
     if (name === 'mobileNumber') {
       finalVal = value.replace(/\D/g, '').slice(0, 10);
+      if (finalVal) {
+        localStorage.setItem('loyaltyPhone', finalVal);
+      }
     }
     setFormValues((current) => ({
       ...current,

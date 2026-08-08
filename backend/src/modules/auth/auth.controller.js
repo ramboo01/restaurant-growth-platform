@@ -5,10 +5,10 @@ const socketUtils = require('../../utils/socket');
 // ─── PUBLIC: Customer self-registration only ───────────────────────────────
 async function customerRegister(request, response, next) {
   try {
-    const { name, email, password } = request.body;
+    const { name, email, password, phone } = request.body;
 
     // Force role to Customer — ignore any role sent from frontend
-    const user = await registerUser({ name, email, password, role: 'Customer' });
+    const user = await registerUser({ name, email, password, phone, role: 'Customer' });
 
     try {
       const io = socketUtils.getIO();
@@ -149,6 +149,7 @@ async function profile(request, response, next) {
           id: user.id,
           name: user.name,
           email: user.email,
+          phone: user.phone || '',
           role: user.role,
           restaurantId: user.restaurantId
         }

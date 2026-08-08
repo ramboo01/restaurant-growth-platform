@@ -40,6 +40,9 @@ export function AuthProvider({ children }) {
         const profileUser = response?.data?.user || null;
         if (profileUser) {
           localStorage.setItem('user', JSON.stringify(profileUser));
+          if (profileUser.phone) {
+            localStorage.setItem('loyaltyPhone', profileUser.phone);
+          }
           if (active) {
             setUser(profileUser);
           }
@@ -73,6 +76,9 @@ export function AuthProvider({ children }) {
     }
     if (nextUser) {
       localStorage.setItem('user', JSON.stringify(nextUser));
+      if (nextUser.phone) {
+        localStorage.setItem('loyaltyPhone', nextUser.phone);
+      }
     }
     setUser(nextUser);
 
@@ -80,6 +86,9 @@ export function AuthProvider({ children }) {
   }
 
   async function register(payload) {
+    if (payload?.phone) {
+      localStorage.setItem('loyaltyPhone', payload.phone);
+    }
     return registerRequest(payload);
   }
 

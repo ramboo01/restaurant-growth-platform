@@ -49,7 +49,8 @@ server.listen(PORT, async () => {
       await pool.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMP NULL`).catch(()=>{});
       await pool.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_reason VARCHAR(255) NULL`).catch(()=>{});
       await pool.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP NULL`).catch(()=>{});
-      console.log('[Startup] Users security columns verified.');
+      await pool.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT NULL`).catch(()=>{});
+      console.log('[Startup] Users security and phone columns verified.');
     } catch (secErr) {
       console.warn('[Startup] Warning verifying users security columns:', secErr.message);
     }

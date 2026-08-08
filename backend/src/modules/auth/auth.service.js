@@ -17,9 +17,10 @@ function normalizeRole(role) {
   return role || 'Customer';
 }
 
-async function registerUser({ name, email, password, role, restaurantId }) {
+async function registerUser({ name, email, password, phone, role, restaurantId }) {
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedRole = normalizeRole(role);
+  const cleanPhone = phone ? phone.trim().replace(/\D/g, '').slice(0, 10) : '';
 
   try {
     let finalRestaurantId = restaurantId ? Number(restaurantId) : null;
@@ -48,8 +49,8 @@ async function registerUser({ name, email, password, role, restaurantId }) {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await getDatabasePool().execute(
-      'INSERT INTO users (name, email, password, role, restaurant_id) VALUES (?, ?, ?, ?, ?)',
-      [name.trim(), normalizedEmail, passwordHash, normalizedRole, finalRestaurantId]
+      'INSERT INTO users (name, email, password, phone, role, restaurant_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [name.trim(), normalizedEmail, passwordHash, cleanPhone, normalizedRole, finalRestaurantId]
     );
 
     // Auto-create Guest CRM profile if role is Customer
@@ -63,7 +64,12 @@ async function registerUser({ name, email, password, role, restaurantId }) {
           await getDatabasePool().execute(
             `INSERT INTO customers (restaurant_id, name, phone, email, total_orders, total_spent, segment)
              VALUES (?, ?, ?, ?, 0, 0.00, 'New')`,
-            [finalRestaurantId, name.trim(), '', normalizedEmail]
+            [finalRestaurantId, name.trim(), cleanPhone, normalizedEmail]
+          );
+        } else if (cleanPhone) {
+          await getDatabasePool().execute(
+            'UPDATE customers SET phone = ? WHERE id = ?',
+            [cleanPhone, existingCust[0].id]
           );
         }
       } catch (custErr) {
@@ -75,6 +81,7 @@ async function registerUser({ name, email, password, role, restaurantId }) {
       id: result.insertId,
       name: name.trim(),
       email: normalizedEmail,
+      phone: cleanPhone,
       role: normalizedRole,
       restaurantId: finalRestaurantId
     };
@@ -94,7 +101,7 @@ async function registerUser({ name, email, password, role, restaurantId }) {
 async function loginUser({ email, password }) {
   const normalizedEmail = email.trim().toLowerCase();
   const [rows] = await getDatabasePool().execute(
-    'SELECT id, name, email, password, role, restaurant_id AS restaurantId, is_blocked, blocked_reason FROM users WHERE email = ? LIMIT 1',
+    'SELECT id, name, email, phone, password, role, restaurant_id AS restaurantId, is_blocked, blocked_reason FROM users WHERE email = ? LIMIT 1',
     [normalizedEmail]
   );
 
@@ -154,6 +161,7 @@ async function loginUser({ email, password }) {
         sub: user.id,
         email: user.email,
         name: user.name,
+        phone: user.phone || '',
         role: user.role,
         restaurantId: user.restaurantId
       },
@@ -172,6 +180,7 @@ async function loginUser({ email, password }) {
       id: user.id,
       name: user.name,
       email: user.email,
+      phone: user.phone || '',
       role: user.role,
       restaurantId: user.restaurantId,
       accessibleRestaurants
@@ -181,7 +190,7 @@ async function loginUser({ email, password }) {
 
 function getUserById(userId) {
   return getDatabasePool()
-    .execute('SELECT id, name, email, role, restaurant_id AS restaurantId FROM users WHERE id = ? LIMIT 1', [userId])
+    .execute('SELECT id, name, email, phone, role, restaurant_id AS restaurantId FROM users WHERE id = ? LIMIT 1', [userId])
     .then(([rows]) => rows[0] ?? null)
     .catch((error) => {
       console.error('[auth] MySQL profile lookup failed:', error);
