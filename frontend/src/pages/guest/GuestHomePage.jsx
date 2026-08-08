@@ -404,18 +404,20 @@ function GuestHomePage() {
                 <div className="card border-0 guest-info-card shadow-sm">
                   <div className="card-body">
                     <h2 className="h6 mb-3 fw-bold">Fulfillment</h2>
-                    <div className="btn-group w-100 mb-3" role="group" aria-label="Fulfillment option">
-                      {guestStorefront.fulfillmentOptions.map((option) => (
-                        <button
-                          className={`btn btn-sm ${fulfillment === option ? 'btn-primary' : 'btn-outline-primary'}`}
-                          key={option}
-                          onClick={() => setFulfillment(option)}
-                          type="button"
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
+                    {guestStorefront.fulfillmentOptions.length > 1 && (
+                      <div className="btn-group w-100 mb-3" role="group" aria-label="Fulfillment option">
+                        {guestStorefront.fulfillmentOptions.map((option) => (
+                          <button
+                            className={`btn btn-sm ${fulfillment === option ? 'btn-primary' : 'btn-outline-primary'}`}
+                            key={option}
+                            onClick={() => setFulfillment(option)}
+                            type="button"
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <div className="vstack gap-2">
                       {fulfillmentDetails.map((detail) => (
                         <div className="guest-fulfillment-row" key={detail}>

@@ -9,7 +9,7 @@ export const guestStorefront = {
   rating: '4.8',
   reviewCount: '1,240',
   storeStatus: 'Open',
-  fulfillmentOptions: ['Delivery', 'Pickup'],
+  fulfillmentOptions: ['Delivery'],
   defaultFulfillment: 'Delivery',
   fulfillment: {
     delivery: {
