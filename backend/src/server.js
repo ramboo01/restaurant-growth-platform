@@ -84,7 +84,8 @@ server.listen(PORT, async () => {
       await pool.execute(`DELETE FROM customers WHERE email IN ('sarah.j@gmail.com', 'michael.s@dundermifflin.com', 'dwight.s@schrutebeets.com', 'pam.b@gmail.com')`).catch(()=>{});
       await pool.execute(`DELETE FROM loyalty_members WHERE phone IN ('555-234-5678', '555-876-5432', '555-999-1111', '555-444-3333')`).catch(()=>{});
       await pool.execute(`DELETE FROM customer_reviews WHERE customer_name IN ('Aarav Sharma', 'Rhea Sen', 'Vikram Mehta')`).catch(()=>{});
-      console.log('[Startup] Customer reviews table verified & fake demo records purged.');
+      await pool.execute(`DELETE FROM catering_orders WHERE company_name IN ('TechNova Solutions', 'GlobalSync Media')`).catch(()=>{});
+      console.log('[Startup] Customer reviews & catering demo records purged.');
     } catch (revErr) {
       console.warn('[Startup] Warning cleaning customer_reviews table:', revErr.message);
     }

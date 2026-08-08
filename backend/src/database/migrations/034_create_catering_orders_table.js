@@ -31,25 +31,5 @@ module.exports = {
         INDEX idx_catering_status (status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
-
-    // Seed one realistic demo entry
-    const [existing] = await pool.execute(`SELECT id FROM catering_orders LIMIT 1`);
-    if (existing.length === 0) {
-      await pool.execute(`
-        INSERT INTO catering_orders
-          (restaurant_id, restaurant_name, company_name, contact_person, contact_phone, contact_email,
-           event_name, event_date, event_time, venue_address, headcount, package_tier,
-           dietary_notes, total_amount, deposit_amount, paid_amount, payment_plan, status)
-        VALUES
-          (1, 'Pulse Valley', 'TechNova Solutions', 'Priya Sharma', '+91 98765-43210', 'events@technova.in',
-           'Annual Team Offsite Lunch', '2026-08-20', '12:30', '14th Floor, WeWork Galaxy, Residency Rd, Bangalore 560025',
-           80, 'Executive', '10 Jain meals, 5 Vegan, No peanuts for 3 guests',
-           2000.00, 500.00, 500.00, 'Installments', 'Confirmed'),
-          (1, 'Pulse Valley', 'GlobalSync Media', 'Rahul Verma', '+91 87654-32100', 'rahul@globalsync.co',
-           'Client Welcome Dinner', '2026-08-28', '19:00', 'Taj Vivanta Ballroom, MG Road, Bangalore 560001',
-           120, 'Luxury', '15 Vegetarian, 2 Gluten-free',
-           5400.00, 1350.00, 1350.00, 'Installments', 'New Inquiry')
-      `);
-    }
   }
 };
