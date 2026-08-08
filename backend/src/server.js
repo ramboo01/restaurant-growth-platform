@@ -65,13 +65,21 @@ server.listen(PORT, async () => {
         ['Urban Bistro & Grill', '555-0199', 'contact@urbanbistro.com', '742 Evergreen Terrace, Springfield', 'American Fusion', '09:00:00', '23:00:00']
       );
       restaurantId = result.insertId;
-      
+    }
+
+    // Ensure categories and menu items exist for the restaurant
+    const [existingItems] = await pool.execute('SELECT id FROM menu_items WHERE restaurant_id = ? LIMIT 1', [restaurantId]);
+    if (existingItems.length === 0) {
+      console.log(`[Startup] Seeding categories and menu items for restaurant ${restaurantId}...`);
       const categories = ['Appetizers', 'Burgers & Mains', 'Pizza & Pasta', 'Drinks & Desserts'];
       for (let i = 0; i < categories.length; i++) {
-        await pool.execute(
-          'INSERT INTO menu_categories (restaurant_id, name, display_order) VALUES (?, ?, ?)',
-          [restaurantId, categories[i], i + 1]
-        );
+        const [catExists] = await pool.execute('SELECT id FROM menu_categories WHERE restaurant_id = ? AND name = ?', [restaurantId, categories[i]]);
+        if (catExists.length === 0) {
+          await pool.execute(
+            'INSERT INTO menu_categories (restaurant_id, name, display_order) VALUES (?, ?, ?)',
+            [restaurantId, categories[i], i + 1]
+          );
+        }
       }
       
       const items = [
@@ -90,7 +98,7 @@ server.listen(PORT, async () => {
           [restaurantId, item.name, item.description, item.category, item.price, item.isAvailable]
         );
       }
-      console.log('[Startup] Default restaurant, categories, and menu items seeded.');
+      console.log('[Startup] Categories and menu items seeded.');
     }
 
     // Ensure super admin and test admin/owner users exist and are unblocked
