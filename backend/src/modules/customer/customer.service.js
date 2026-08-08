@@ -153,6 +153,30 @@ async function getCustomersByRestaurantId(restaurantId, query = {}) {
   const pool = getDatabasePool();
   const options = parseListOptions(query, { sortMap: CUSTOMER_SORT_MAP });
   
+  // Auto-sync registered Customer users from users table into customers table
+  try {
+    const [userCusts] = await pool.execute(
+      `SELECT name, email, created_at FROM users WHERE role = 'Customer' AND email IS NOT NULL AND email != ''`
+    );
+    for (const u of userCusts) {
+      const uEmail = u.email.trim().toLowerCase();
+      const uName = u.name ? u.name.trim() : 'Registered Guest';
+      const [exists] = await pool.execute(
+        `SELECT id FROM customers WHERE restaurant_id = ? AND LOWER(email) = ? LIMIT 1`,
+        [restaurantId, uEmail]
+      );
+      if (exists.length === 0) {
+        await pool.execute(
+          `INSERT INTO customers (restaurant_id, name, phone, email, total_orders, total_spent, segment, created_at)
+           VALUES (?, ?, '', ?, 0, 0.00, 'New', ?)`,
+          [restaurantId, uName, uEmail, u.created_at || new Date()]
+        );
+      }
+    }
+  } catch (syncErr) {
+    console.warn('[CRM] Auto-sync registered users error:', syncErr.message);
+  }
+
   const whereClauses = ['c.restaurant_id = ?'];
   const params = [restaurantId];
 

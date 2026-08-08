@@ -52,6 +52,25 @@ async function registerUser({ name, email, password, role, restaurantId }) {
       [name.trim(), normalizedEmail, passwordHash, normalizedRole, finalRestaurantId]
     );
 
+    // Auto-create Guest CRM profile if role is Customer
+    if (normalizedRole === 'Customer') {
+      try {
+        const [existingCust] = await getDatabasePool().execute(
+          'SELECT id FROM customers WHERE restaurant_id = ? AND email = ? LIMIT 1',
+          [finalRestaurantId, normalizedEmail]
+        );
+        if (existingCust.length === 0) {
+          await getDatabasePool().execute(
+            `INSERT INTO customers (restaurant_id, name, phone, email, total_orders, total_spent, segment)
+             VALUES (?, ?, ?, ?, 0, 0.00, 'New')`,
+            [finalRestaurantId, name.trim(), '', normalizedEmail]
+          );
+        }
+      } catch (custErr) {
+        console.warn('[auth] Failed to auto-create customer CRM profile:', custErr.message);
+      }
+    }
+
     return {
       id: result.insertId,
       name: name.trim(),

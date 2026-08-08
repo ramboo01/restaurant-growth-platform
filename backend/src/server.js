@@ -86,6 +86,22 @@ server.listen(PORT, async () => {
       await pool.execute(`DELETE FROM customer_reviews WHERE customer_name IN ('Aarav Sharma', 'Rhea Sen', 'Vikram Mehta')`).catch(()=>{});
       await pool.execute(`DELETE FROM catering_orders WHERE company_name IN ('TechNova Solutions', 'GlobalSync Media')`).catch(()=>{});
       console.log('[Startup] Customer reviews & catering demo records purged.');
+
+      // Sync all registered Customer users into customers CRM table
+      const [regCustomers] = await pool.execute(`SELECT name, email, created_at FROM users WHERE role = 'Customer' AND email IS NOT NULL AND email != ''`);
+      for (const rc of regCustomers) {
+        const rcEmail = rc.email.trim().toLowerCase();
+        const rcName = rc.name ? rc.name.trim() : 'Registered Guest';
+        const [exists] = await pool.execute(`SELECT id FROM customers WHERE LOWER(email) = ? LIMIT 1`, [rcEmail]);
+        if (exists.length === 0) {
+          await pool.execute(
+            `INSERT INTO customers (restaurant_id, name, phone, email, total_orders, total_spent, segment, created_at)
+             VALUES (1, ?, '', ?, 0, 0.00, 'New', ?)`,
+            [rcName, rcEmail, rc.created_at || new Date()]
+          );
+        }
+      }
+      console.log(`[Startup] Synced ${regCustomers.length} registered customer accounts into Guest CRM.`);
     } catch (revErr) {
       console.warn('[Startup] Warning cleaning customer_reviews table:', revErr.message);
     }
