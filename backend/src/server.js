@@ -63,7 +63,7 @@ server.listen(PORT, async () => {
       console.warn('[Startup] Warning verifying customers columns:', custColErr.message);
     }
 
-    // Ensure customer_reviews table exists and is seeded
+    // Ensure customer_reviews table exists and purge fake demo records
     try {
       await pool.execute(`
         CREATE TABLE IF NOT EXISTS customer_reviews (
@@ -80,20 +80,13 @@ server.listen(PORT, async () => {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
 
-      const [reviewsCheck] = await pool.execute('SELECT id FROM customer_reviews LIMIT 1');
-      if (reviewsCheck.length === 0) {
-        console.log('[Startup] Seeding initial customer reviews...');
-        await pool.execute(`
-          INSERT INTO customer_reviews (restaurant_id, customer_name, platform, rating, content, ai_reply_draft, reply_status)
-          VALUES 
-            (1, 'Aarav Sharma', 'Google', 5, 'Absolutely incredible food and top-tier ambiance! The truffle burger was cooked to perfection.', 'Hi Aarav,\n\nThank you so much for the 5-star review! We are thrilled you enjoyed the truffle burger.', 'Replied'),
-            (1, 'Rhea Sen', 'Zomato', 4, 'Great pizza crust and fast delivery. Would definitely order again.', NULL, 'Pending'),
-            (1, 'Vikram Mehta', 'Google', 5, 'Best dining experience in town. Staff is very attentive.', 'Thank you Vikram for your wonderful feedback!', 'Replied')
-        `);
-      }
-      console.log('[Startup] Customer reviews table and seed verified.');
+      // Purge fake temp demo records from database
+      await pool.execute(`DELETE FROM customers WHERE email IN ('sarah.j@gmail.com', 'michael.s@dundermifflin.com', 'dwight.s@schrutebeets.com', 'pam.b@gmail.com')`).catch(()=>{});
+      await pool.execute(`DELETE FROM loyalty_members WHERE phone IN ('555-234-5678', '555-876-5432', '555-999-1111', '555-444-3333')`).catch(()=>{});
+      await pool.execute(`DELETE FROM customer_reviews WHERE customer_name IN ('Aarav Sharma', 'Rhea Sen', 'Vikram Mehta')`).catch(()=>{});
+      console.log('[Startup] Customer reviews table verified & fake demo records purged.');
     } catch (revErr) {
-      console.warn('[Startup] Warning creating customer_reviews table:', revErr.message);
+      console.warn('[Startup] Warning cleaning customer_reviews table:', revErr.message);
     }
 
     // Ensure default restaurant exists
