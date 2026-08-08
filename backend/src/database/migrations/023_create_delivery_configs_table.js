@@ -19,9 +19,10 @@ async function up() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
-  // Seed default delivery config for restaurant 1 if not exists
+  // Seed default delivery config for restaurant 1 if not exists and restaurant exists
   const [existing] = await pool.execute('SELECT id FROM delivery_configs WHERE restaurant_id = 1');
-  if (existing.length === 0) {
+  const [restaurantExists] = await pool.execute('SELECT id FROM restaurants WHERE id = 1');
+  if (existing.length === 0 && restaurantExists.length > 0) {
     await pool.execute(`
       INSERT INTO delivery_configs (restaurant_id, radius_limit, base_delivery_fee, min_order_value, free_delivery_threshold, is_surge_active, surge_multiplier, priority_json)
       VALUES (1, 5.5, 3.99, 15.00, 50.00, FALSE, 1.50, ?)
