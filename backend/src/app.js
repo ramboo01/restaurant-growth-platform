@@ -42,7 +42,7 @@ const allowedOrigins = FRONTEND_URL
 const isProduction = process.env.NODE_ENV === 'production';
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isProduction ? 100 : 100000,
+  max: isProduction ? 5000 : 100000,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

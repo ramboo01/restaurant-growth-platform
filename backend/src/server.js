@@ -106,24 +106,40 @@ server.listen(PORT, async () => {
       const bcrypt = require('bcryptjs');
       const usersToSeed = [
         { name: 'Platform Super Admin', email: 'admin@platform.com', password: 'Admin@123', role: 'Admin' },
-        { name: 'Demo Owner', email: 'ownerr@gmail.com', password: 'admin123', role: 'Admin' },
+        { name: 'Restaurant Owner', email: 'owner@platform.com', password: 'Owner@123', role: 'Owner' },
+        { name: 'Demo Owner', email: 'ownerr@gmail.com', password: 'admin123', role: 'Owner' },
         { name: 'Demo Admin', email: 'adminn@gmail.com', password: 'admin123', role: 'Admin' }
       ];
 
       for (const u of usersToSeed) {
         const [existing] = await pool.execute('SELECT id FROM users WHERE email = ?', [u.email]);
+        let userId;
         if (existing.length === 0) {
           console.log(`[Startup] Seeding user: ${u.email}...`);
           const hash = await bcrypt.hash(u.password, 10);
-          await pool.execute(
+          const [res] = await pool.execute(
             "INSERT INTO users (name, email, password, role, is_blocked) VALUES (?, ?, ?, ?, 0)",
             [u.name, u.email, hash, u.role]
           );
+          userId = res.insertId;
         } else {
+          userId = existing[0].id;
+          const hash = await bcrypt.hash(u.password, 10);
           await pool.execute(
-            "UPDATE users SET role = ?, is_blocked = 0 WHERE email = ?",
-            [u.role, u.email]
+            "UPDATE users SET role = ?, password = ?, is_blocked = 0 WHERE email = ?",
+            [u.role, hash, u.email]
           );
+        }
+
+        // Ensure owner users are linked to restaurant 1 in user_restaurants
+        if (u.role === 'Owner') {
+          const [urExists] = await pool.execute('SELECT id FROM user_restaurants WHERE user_id = ? AND restaurant_id = 1', [userId]);
+          if (urExists.length === 0) {
+            await pool.execute(
+              "INSERT INTO user_restaurants (user_id, restaurant_id, role, is_primary) VALUES (?, 1, 'Owner', TRUE)",
+              [userId]
+            );
+          }
         }
       }
       console.log('[Startup] Default admin/owner users verified and unblocked.');
