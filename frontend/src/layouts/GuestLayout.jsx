@@ -47,7 +47,7 @@ function GuestLayout() {
     }
     fetchPublicSiteSettings();
 
-    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+    const socket = io(import.meta.env.VITE_API_URL || 'https://restaurant-growth-platform.onrender.com');
     socket.on('siteSettingsUpdated', (d) => {
       if (d) {
         setSiteAppConfig({

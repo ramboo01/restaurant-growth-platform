@@ -12,7 +12,7 @@ export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const socketUrl = import.meta.env.VITE_API_BASE_URL || 'https://restaurant-growth-platform.onrender.com';
     const newSocket = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling']

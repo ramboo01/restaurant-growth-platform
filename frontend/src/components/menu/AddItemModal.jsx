@@ -224,7 +224,7 @@ function AddItemModal({ categories = [], item, show, onClose, onSubmit, submitti
               {displayPreview ? (
                 <div className="mt-2">
                   <img
-                    src={previewUrl || (displayPreview.startsWith('http') ? displayPreview : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/${displayPreview.replace(/^\//, '')}`)}
+                    src={previewUrl || (displayPreview.startsWith('http') ? displayPreview : `${import.meta.env.VITE_API_BASE_URL || 'https://restaurant-growth-platform.onrender.com'}/${displayPreview.replace(/^\//, '')}`)}
                     alt="Preview"
                     style={{ maxHeight: 120, maxWidth: '100%', borderRadius: 8, objectFit: 'cover', border: '1px solid #dee2e6' }}
                   />

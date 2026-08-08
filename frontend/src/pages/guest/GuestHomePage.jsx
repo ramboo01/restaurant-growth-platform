@@ -142,7 +142,7 @@ function GuestHomePage() {
   useEffect(() => {
     if (!selectedRestaurant?.id) return undefined;
 
-    const socketUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const socketUrl = import.meta.env.VITE_API_BASE_URL || 'https://restaurant-growth-platform.onrender.com';
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling']
     });
@@ -184,7 +184,7 @@ function GuestHomePage() {
   useEffect(() => {
     if (!selectedRestaurant) return;
 
-    const socketUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const socketUrl = import.meta.env.VITE_API_BASE_URL || 'https://restaurant-growth-platform.onrender.com';
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling']
     });

@@ -35,7 +35,7 @@ export function RestaurantProvider({ children }) {
 
     // If owner or admin, fetch the full list of restaurants to populate the dropdown automatically
     if (user.role === 'Owner' || user.role === 'Admin') {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://restaurant-growth-platform.onrender.com';
       fetch(`${baseUrl}/api/public/restaurants`)
         .then((res) => res.json())
         .then((res) => {
