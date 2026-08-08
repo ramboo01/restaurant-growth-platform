@@ -88,7 +88,7 @@ async function getDashboardAnalytics(restaurantId) {
       SELECT
         COUNT(*) AS totalCateringOrders,
         COALESCE(SUM(CASE WHEN status = 'New Inquiry' THEN 1 ELSE 0 END), 0) AS newInquiries,
-        COALESCE(SUM(CASE WHEN status NOT IN ('Declined', 'Cancelled') THEN paid_amount ELSE 0 END), 0) AS totalCateringRevenue
+        COALESCE(SUM(CASE WHEN status IN ('Confirmed', 'Completed', 'Paid') THEN paid_amount ELSE 0 END), 0) AS totalCateringRevenue
       FROM catering_orders
       WHERE restaurant_id = ?
     `, [restaurantId]);

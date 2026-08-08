@@ -54,6 +54,48 @@ server.listen(PORT, async () => {
       console.warn('[Startup] Warning verifying users security columns:', secErr.message);
     }
 
+    // Ensure customers table columns exist
+    try {
+      await pool.execute(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT NULL`).catch(()=>{});
+      await pool.execute(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS segment VARCHAR(50) DEFAULT 'New'`).catch(()=>{});
+      console.log('[Startup] Customers table columns verified.');
+    } catch (custColErr) {
+      console.warn('[Startup] Warning verifying customers columns:', custColErr.message);
+    }
+
+    // Ensure customer_reviews table exists and is seeded
+    try {
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS customer_reviews (
+          id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+          restaurant_id INT NOT NULL,
+          customer_name VARCHAR(100) NOT NULL,
+          platform VARCHAR(50) NOT NULL DEFAULT 'Google',
+          rating INT NOT NULL DEFAULT 5,
+          content TEXT NOT NULL,
+          ai_reply_draft TEXT DEFAULT NULL,
+          reply_status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_review_restaurant (restaurant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+
+      const [reviewsCheck] = await pool.execute('SELECT id FROM customer_reviews LIMIT 1');
+      if (reviewsCheck.length === 0) {
+        console.log('[Startup] Seeding initial customer reviews...');
+        await pool.execute(`
+          INSERT INTO customer_reviews (restaurant_id, customer_name, platform, rating, content, ai_reply_draft, reply_status)
+          VALUES 
+            (1, 'Aarav Sharma', 'Google', 5, 'Absolutely incredible food and top-tier ambiance! The truffle burger was cooked to perfection.', 'Hi Aarav,\n\nThank you so much for the 5-star review! We are thrilled you enjoyed the truffle burger.', 'Replied'),
+            (1, 'Rhea Sen', 'Zomato', 4, 'Great pizza crust and fast delivery. Would definitely order again.', NULL, 'Pending'),
+            (1, 'Vikram Mehta', 'Google', 5, 'Best dining experience in town. Staff is very attentive.', 'Thank you Vikram for your wonderful feedback!', 'Replied')
+        `);
+      }
+      console.log('[Startup] Customer reviews table and seed verified.');
+    } catch (revErr) {
+      console.warn('[Startup] Warning creating customer_reviews table:', revErr.message);
+    }
+
     // Ensure default restaurant exists
     const [restaurants] = await pool.execute('SELECT id FROM restaurants LIMIT 1');
     let restaurantId = restaurants[0]?.id;
