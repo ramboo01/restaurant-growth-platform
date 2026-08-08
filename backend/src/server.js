@@ -43,6 +43,17 @@ server.listen(PORT, async () => {
     }
     console.log('[Startup] Database migrations checked and up-to-date.');
 
+    // Ensure security columns exist in users table
+    try {
+      await pool.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked TINYINT(1) NOT NULL DEFAULT 0`).catch(()=>{});
+      await pool.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMP NULL`).catch(()=>{});
+      await pool.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_reason VARCHAR(255) NULL`).catch(()=>{});
+      await pool.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP NULL`).catch(()=>{});
+      console.log('[Startup] Users security columns verified.');
+    } catch (secErr) {
+      console.warn('[Startup] Warning verifying users security columns:', secErr.message);
+    }
+
     // Ensure default restaurant exists
     const [restaurants] = await pool.execute('SELECT id FROM restaurants LIMIT 1');
     let restaurantId = restaurants[0]?.id;
@@ -82,17 +93,34 @@ server.listen(PORT, async () => {
       console.log('[Startup] Default restaurant, categories, and menu items seeded.');
     }
 
-    // Ensure super admin user exists
-    const [rows] = await pool.execute("SELECT id FROM users WHERE role = 'Admin' LIMIT 1");
-    if (rows.length === 0) {
-      console.log('[Startup] Seeding Platform Super Admin...');
+    // Ensure super admin and test admin/owner users exist and are unblocked
+    try {
       const bcrypt = require('bcryptjs');
-      const hash = await bcrypt.hash('Admin@123', 10);
-      await pool.execute(
-        "INSERT INTO users (name, email, password, role, is_blocked) VALUES (?, ?, ?, ?, 0)",
-        ['Platform Super Admin', 'admin@platform.com', hash, 'Admin']
-      );
-      console.log('[Startup] Super Admin created: admin@platform.com / Admin@123');
+      const usersToSeed = [
+        { name: 'Platform Super Admin', email: 'admin@platform.com', password: 'Admin@123', role: 'Admin' },
+        { name: 'Demo Owner', email: 'ownerr@gmail.com', password: 'admin123', role: 'Admin' },
+        { name: 'Demo Admin', email: 'adminn@gmail.com', password: 'admin123', role: 'Admin' }
+      ];
+
+      for (const u of usersToSeed) {
+        const [existing] = await pool.execute('SELECT id FROM users WHERE email = ?', [u.email]);
+        if (existing.length === 0) {
+          console.log(`[Startup] Seeding user: ${u.email}...`);
+          const hash = await bcrypt.hash(u.password, 10);
+          await pool.execute(
+            "INSERT INTO users (name, email, password, role, is_blocked) VALUES (?, ?, ?, ?, 0)",
+            [u.name, u.email, hash, u.role]
+          );
+        } else {
+          await pool.execute(
+            "UPDATE users SET role = ?, is_blocked = 0 WHERE email = ?",
+            [u.role, u.email]
+          );
+        }
+      }
+      console.log('[Startup] Default admin/owner users verified and unblocked.');
+    } catch (userSeedErr) {
+      console.warn('[Startup] Warning verifying users seed:', userSeedErr.message);
     }
   } catch (startupErr) {
     console.error('[Startup] Self-healing database setup failed:', startupErr.message);
